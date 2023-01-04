@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>plugin_widget</class>
+ <widget class="QWidget" name="plugin_widget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>648</width>
+    <height>401</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout"/>
+   </item>
+   <item>
+    <widget class="QPushButton" name="clear_templates_button">
+     <property name="text">
+      <string>Clear Templates</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="load_data_button">
+     <property name="text">
+      <string>Load Data</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTableView" name="table_view"/>
+   </item>
+   <item>
+    <spacer name="vert_spacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>81</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

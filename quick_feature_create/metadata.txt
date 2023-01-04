@@ -1,0 +1,25 @@
+[general]
+name=Quick Feature Create
+about=Use feature templates and keyboard shortcuts to accelerate the manual creation of features
+category=None
+hasProcessingProvider=no
+description=Use feature templates and keyboard shortcuts to accelerate the manual creation of features
+icon=resources/images/default_icon.png
+tags=features,digitization
+
+# credits and contact
+author=Andrew PLOWRIGHT
+email=andrew.plowright@nrcan-rncan.gc.ca
+homepage=https://github.com/andrew-plowright/quick_feature_create
+repository=https://github.com/andrew-plowright/quick_feature_create
+tracker=https://github.com/andrew-plowright/quick_feature_create/issues
+
+# experimental flag
+deprecated=False
+experimental=True
+qgisMinimumVersion=3.22
+qgisMaximumVersion=3.99
+
+# versionnement
+version=0.1.0
+changelog=

@@ -1,0 +1,24 @@
+[
+	
+	{
+		"name": "Test City",
+		"map_lyr_name": "test_points",
+		"default_values": {
+			"name": "Template City",
+			"class": "city"
+		},
+		"shortcut_str": "C"
+	},
+	{
+		"name": "Test Lake",
+		"map_lyr_name": "test_points",
+		"default_values": {
+			"name": "Template Lake",
+			"class": "lake"
+		},
+		"shortcut_str": "L"
+	
+	}
+]
+
+
