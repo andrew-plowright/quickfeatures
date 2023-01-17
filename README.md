@@ -1,4 +1,4 @@
-# Quick Feature Create - QGIS Plugin
+# Quick Features - QGIS Plugin
 
 This QGIS plugin was developed to speed up workflows that depend on high volumes
 of manual feature creation.
