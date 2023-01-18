@@ -8,8 +8,8 @@ from pathlib import Path
 from qgis.core import QgsMessageLog, Qgis
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QWidget, QAction, QTableWidgetItem, QHeaderView, QButtonGroup, QRadioButton
-from quick_feature_create.__about__ import __title__
-from quick_feature_create.template.template_classes import TemplateTableModel
+from quickfeatures.__about__ import __title__
+from quickfeatures.template.template_classes import TemplateTableModel
 
 
 class MyPluginWidget(QWidget):
@@ -17,6 +17,8 @@ class MyPluginWidget(QWidget):
     def __init__(self, parent=None):
 
         super().__init__(parent)
+
+        self.table_model = None
 
         # Load UI file
         uic.loadUi(Path(__file__).parent / "{}.ui".format(Path(__file__).stem), self)
@@ -30,7 +32,7 @@ class MyPluginWidget(QWidget):
     def load_data(self):
 
         self.table_model.from_json(
-            Path('C:/Users/aplowrig/Work/dev/qgis_plugins/quick_feature_create/template_group.json'))
+            Path('C:/Users/aplowrig/Work/dev/qgis_plugins/quickfeatures/template_group.json'))
 
         QgsMessageLog.logMessage(f"Loaded {len(self.table_model.templates)} templates", tag=__title__, level=Qgis.Success)
 
@@ -48,4 +50,3 @@ class MyPluginWidget(QWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
-

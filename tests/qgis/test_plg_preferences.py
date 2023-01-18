@@ -15,8 +15,8 @@
 from qgis.testing import unittest
 
 # project
-from quick_feature_create.__about__ import __version__
-from quick_feature_create.toolbelt.preferences import PlgSettingsStructure
+from quickfeatures.__about__ import __version__
+from quickfeatures.toolbelt.preferences import PlgSettingsStructure
 
 # ############################################################################
 # ########## Classes #############

@@ -1,18 +1,18 @@
 [general]
-name=Quick Feature Create
+name=Quick Features
 about=Use feature templates and keyboard shortcuts to accelerate the manual creation of features
 category=None
 hasProcessingProvider=no
 description=Use feature templates and keyboard shortcuts to accelerate the manual creation of features
-icon=resources/images/default_icon.png
+icon=resources/images/high_voltage.png
 tags=features,digitization
 
 # credits and contact
 author=Andrew PLOWRIGHT
 email=andrew.plowright@nrcan-rncan.gc.ca
-homepage=https://github.com/andrew-plowright/quick_feature_create
-repository=https://github.com/andrew-plowright/quick_feature_create
-tracker=https://github.com/andrew-plowright/quick_feature_create/issues
+homepage=https://github.com/andrew-plowright/quickfeatures
+repository=https://github.com/andrew-plowright/quickfeatures
+tracker=https://github.com/andrew-plowright/quickfeatures/issues
 
 # experimental flag
 deprecated=False

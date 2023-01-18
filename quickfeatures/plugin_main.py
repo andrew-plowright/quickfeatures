@@ -6,9 +6,9 @@ from qgis.PyQt.QtWidgets import QAction, QDockWidget, QMessageBox
 from qgis.utils import showPluginHelp
 
 # project
-from quick_feature_create.__about__ import __title__
-from quick_feature_create.gui.dlg_settings import MyPluginOptionsFactory
-from quick_feature_create.gui.plugin_widget import MyPluginWidget
+from quickfeatures.__about__ import __title__
+from quickfeatures.gui.dlg_settings import MyPluginOptionsFactory
+from quickfeatures.gui.plugin_widget import MyPluginWidget
 
 
 class QuickFeatureCreatePlugin:

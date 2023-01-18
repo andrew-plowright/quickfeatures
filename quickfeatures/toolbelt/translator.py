@@ -13,8 +13,8 @@ from qgis.PyQt.QtCore import QLocale, QTranslator
 from qgis.PyQt.QtWidgets import QApplication
 
 # project package
-from quick_feature_create.__about__ import DIR_PLUGIN_ROOT, __email__, __title__
-from quick_feature_create.toolbelt import PlgLogger
+from quickfeatures.__about__ import DIR_PLUGIN_ROOT, __email__, __title__
+from quickfeatures.toolbelt import PlgLogger
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/quick_feature_create.iml" filepath="$PROJECT_DIR$/.idea/quick_feature_create.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/quickfeatures.iml" filepath="$PROJECT_DIR$/.idea/quickfeatures.iml" />
     </modules>
   </component>
 </project>

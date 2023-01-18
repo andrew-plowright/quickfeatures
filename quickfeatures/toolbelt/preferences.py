@@ -11,8 +11,8 @@ from dataclasses import asdict, dataclass, fields
 from qgis.core import QgsSettings
 
 # package
-import quick_feature_create.toolbelt.log_handler as log_hdlr
-from quick_feature_create.__about__ import __title__, __version__
+import quickfeatures.toolbelt.log_handler as log_hdlr
+from quickfeatures.__about__ import __title__, __version__
 
 # ############################################################################
 # ########## Classes ###############

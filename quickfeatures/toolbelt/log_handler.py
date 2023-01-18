@@ -12,8 +12,8 @@ from qgis.PyQt.QtWidgets import QPushButton, QWidget
 from qgis.utils import iface
 
 # project package
-from quick_feature_create.__about__ import __title__
-import quick_feature_create.toolbelt.preferences as plg_prefs_hdlr
+from quickfeatures.__about__ import __title__
+import quickfeatures.toolbelt.preferences as plg_prefs_hdlr
 
 
 class PlgLogger(logging.Handler):

@@ -18,7 +18,7 @@ from pathlib import Path
 from semver import VersionInfo
 
 # project
-from quick_feature_create import __about__
+from quickfeatures import __about__
 
 # ############################################################################
 # ########## Classes #############

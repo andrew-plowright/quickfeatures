@@ -1,8 +1,8 @@
-from quick_feature_create.template.template_functions import *
+from quickfeatures.template.template_functions import *
 from typing import Dict, List
 from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis
-from quick_feature_create.__about__ import __title__
-from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QObject
+from quickfeatures.__about__ import __title__
+from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QObject, pyqtSignal
 from qgis.PyQt.QtGui import QKeySequence
 from qgis.PyQt.QtWidgets import QShortcut
 from pathlib import Path
@@ -10,19 +10,24 @@ import json
 
 
 class Template(QObject):
+    # Custom signal emitted when template is activated or deactivated
+    activated = pyqtSignal()
+    deactivated = pyqtSignal()
+    beginActivation = pyqtSignal()
 
-    def __init__(self, parent, name: str, shortcut_str: str, map_lyr_name: str, default_values: Dict[str, QgsDefaultValue]):
+    def __init__(self, parent, name: str, shortcut_str: str, map_lyr_name: str,
+                 default_values: Dict[str, QgsDefaultValue]):
 
         super().__init__(parent)
-
-        QgsMessageLog.logMessage(f'Parent of this tempate: {parent.objectName()}', tag=__title__, level=Qgis.Info)
 
         self.name = name
         self.map_lyr_name = map_lyr_name
         self.default_values = default_values
         self.shortcut_str = shortcut_str
-        self.shortcut = QShortcut(QKeySequence(self.shortcut_str), parent)
-        self.shortcut.activated.connect(lambda: QgsMessageLog.logMessage(f"Shortcut activated for '{self.name}'", tag=__title__, level=Qgis.Info))
+
+        # Register shortcut
+        self.shortcut = None
+        self.register_shortcut(parent)
 
         # Store default values and 'suppression' setting for when template is deactivated
         self.revert_suppress = 0
@@ -36,6 +41,8 @@ class Template(QObject):
         self.map_lyr = None
         self.load_lyr()
 
+    def __del__(self):
+        self.unregister_shortcut()
 
     def load_lyr(self):
         map_lyrs = QgsProject().instance().mapLayersByName(self.map_lyr_name)
@@ -46,7 +53,8 @@ class Template(QObject):
         elif len(map_lyrs) == 0:
             self.map_lyr = None
             self.valid = False
-            QgsMessageLog.logMessage(f"Found no map layers named {self.map_lyr_name}", tag=__title__, level=Qgis.Critical)
+            QgsMessageLog.logMessage(f"Found no map layers named {self.map_lyr_name}", tag=__title__,
+                                     level=Qgis.Critical)
         else:
             self.map_lyr = None
             self.valid = False
@@ -56,9 +64,20 @@ class Template(QObject):
         vals = self.default_values
         return ', '.join([key + ': ' + vals[key].expression() for key in vals])
 
-    def activate_template(self) -> None:
+    def toggle(self):
+
+        if self.active:
+            self.deactivate()
+        else:
+            self.activate()
+
+    def activate(self) -> None:
+
         if not self.active:
             QgsMessageLog.logMessage(f"Activated template '{self.name}'", tag=__title__, level=Qgis.Info)
+
+            # Emit signal
+            self.beginActivation.emit()
 
             # Get values that will be reverted
             field_names = [field_name for field_name in self.default_values]
@@ -72,7 +91,11 @@ class Template(QObject):
             # Set this template as active
             self.active = True
 
-    def deactivate_template(self) -> None:
+            # Emit signal
+            self.activated.emit()
+
+    def deactivate(self) -> None:
+
         if self.active:
             QgsMessageLog.logMessage(f"Deactivated template '{self.name}'", tag=__title__, level=Qgis.Info)
 
@@ -82,6 +105,14 @@ class Template(QObject):
 
             # Set this template as inactive
             self.active = False
+
+            # Emit signal
+            self.deactivated.emit()
+
+    def register_shortcut(self, parent) -> None:
+
+        self.shortcut = QShortcut(QKeySequence(self.shortcut_str), parent)
+        self.shortcut.activated.connect(self.toggle)
 
     def unregister_shortcut(self) -> None:
 
@@ -168,13 +199,8 @@ class TemplateTableModel(QAbstractTableModel):
         column_header_label = self.header_labels[index.column()]
 
         if column_header_label == 'Active' and role == Qt.CheckStateRole:
-            self.toggle_template(self.templates[index.row()])
-            # checked = value == Qt.Checked
-            # if checked:
-            #     self.select_template(self.templates[index.row()])
-            # else:
-            #     self.deselect_template(self.templates[index.row()])
-
+            template = self.templates[index.row()]
+            template.toggle()
             return True
 
     def add_templates(self, templates: List[Template]) -> None:
@@ -184,10 +210,31 @@ class TemplateTableModel(QAbstractTableModel):
         self.beginInsertRows(QModelIndex(), row, row + len(templates) - 1)
 
         for template in templates:
-
             self.templates.append(template)
 
+            template.beginActivation.connect(lambda temp=template: self.deactivate_other_templates(temp))
+            template.activated.connect(lambda temp=template: self.refresh_template_status(temp))
+            template.deactivated.connect(lambda temp=template: self.refresh_template_status(temp))
+
         self.endInsertRows()
+
+    def refresh_template_status(self, template: Template) -> None:
+
+        row = self.templates.index(template)
+        col = self.header_labels.index('Active')
+        index = self.createIndex(row, col)
+        self.dataChanged.emit(index, index)
+
+        # col = self.header_labels.index('Active')
+        # index_start = self.createIndex(0, col)
+        # index_end = self.createIndex(self.rowCount() - 1, col)
+        # self.dataChanged.emit(index_start, index_end)
+
+    def deactivate_other_templates(self, template: Template) -> None:
+
+        for row in range(len(self.templates)):
+            if not self.templates[row] == template:
+                self.templates[row].deactivate()
 
     def remove_template(self, template: Template) -> None:
         try:
@@ -195,23 +242,25 @@ class TemplateTableModel(QAbstractTableModel):
 
             self.beginRemoveRows(QModelIndex(), row, row)
 
-            template.unregister_shortcut()
-            template.deactivate_template()
+            template.deactivate()
+            template.deleteLater()
 
             self.templates.remove(template)
 
             self.endRemoveRows()
+
         except ValueError:
             print(f'Template not found')
 
     def clear_templates(self):
         if len(self.templates) > 0:
 
-            self.beginRemoveRows(QModelIndex(), 0, self.rowCount() -1)
+            self.beginRemoveRows(QModelIndex(), 0, self.rowCount() - 1)
 
             for template in self.templates:
-                template.unregister_shortcut()
-                template.deactivate_template()
+                template.deactivate()
+                template.deleteLater()
+
             self.templates.clear()
 
             self.endRemoveRows()
@@ -219,39 +268,6 @@ class TemplateTableModel(QAbstractTableModel):
     def print_templates(self) -> None:
         for tp in self.templates:
             print({f"Template: '{tp.name}', Active: {str(tp.active)}"})
-
-    def toggle_template(self, template: Template) -> None:
-        if template.active:
-            self.deselect_template(template)
-        else:
-            self.select_template(template)
-
-    def select_template(self, template: Template) -> None:
-
-        col = self.header_labels.index('Active')
-
-        # Deactivate other templates first
-        for row in range(len(self.templates)):
-            if not self.templates[row] == template:
-                self.templates[row].deactivate_template()
-
-        # Activate selected template
-        template.activate_template()
-
-        # Update view
-        index_start = self.createIndex(0, col)
-        index_end = self.createIndex(self.rowCount() - 1, col)
-        self.dataChanged.emit(index_start, index_end)
-
-    def deselect_template(self, template: Template) -> None:
-
-        template.deactivate_template()
-
-        # Update view
-        row = self.templates.index(template)
-        col = self.header_labels.index('Active')
-        index = self.createIndex(row, col)
-        self.dataChanged.emit(index, index)
 
     def from_json(self, path: Path):
 
@@ -264,8 +280,8 @@ class TemplateTableModel(QAbstractTableModel):
 
         for d in data:
             default_values = {key: QgsDefaultValue(f"'{value}'") for key, value in d['default_values'].items()}
-            templates.append(Template(parent=self.parent(), name=d['name'], shortcut_str=d['shortcut_str'],
-                                      map_lyr_name=d['map_lyr_name'], default_values=default_values))
+            template = Template(parent=self.parent(), name=d['name'], shortcut_str=d['shortcut_str'],
+                                map_lyr_name=d['map_lyr_name'], default_values=default_values)
+            templates.append(template)
 
         self.add_templates(templates)
-

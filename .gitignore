@@ -129,5 +129,5 @@ dmypy.json
 *.zip
 .vscode/
 *.qm
-/quick_feature_create.qgz
 /handy.md
+/quickfeatures.qgz

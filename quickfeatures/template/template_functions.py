@@ -2,7 +2,7 @@ from qgis.core import QgsMapLayer
 from qgis.core import QgsDefaultValue
 from typing import Dict
 from qgis.core import QgsMessageLog, Qgis
-from quick_feature_create.__about__ import __title__
+from quickfeatures.__about__ import __title__
 
 
 def set_default_definitions(map_lyr: QgsMapLayer, default_values: Dict[str, QgsDefaultValue]) -> None:

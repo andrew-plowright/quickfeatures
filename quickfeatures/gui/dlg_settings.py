@@ -16,15 +16,15 @@ from qgis.PyQt.Qt import QUrl
 from qgis.PyQt.QtGui import QDesktopServices, QIcon
 
 # project
-from quick_feature_create.__about__ import (
+from quickfeatures.__about__ import (
     __icon_path__,
     __title__,
     __uri_homepage__,
     __uri_tracker__,
     __version__,
 )
-from quick_feature_create.toolbelt import PlgOptionsManager
-from quick_feature_create.toolbelt.preferences import PlgSettingsStructure
+from quickfeatures.toolbelt import PlgOptionsManager
+from quickfeatures.toolbelt.preferences import PlgSettingsStructure
 
 FORM_CLASS, _ = uic.loadUiType(Path(__file__).parent / "{}.ui".format(Path(__file__).stem))
 
