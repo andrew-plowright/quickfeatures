@@ -131,3 +131,4 @@ dmypy.json
 *.qm
 /handy.md
 /quickfeatures.qgz
+.idea/
