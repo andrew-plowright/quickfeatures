@@ -7,7 +7,7 @@
 from pathlib import Path
 from qgis.core import QgsMessageLog, Qgis
 from qgis.PyQt import uic
-from qgis.PyQt.QtWidgets import QWidget, QAction, QTableWidgetItem, QHeaderView, QButtonGroup, QRadioButton
+from qgis.PyQt.QtWidgets import QWidget, QAction, QTableWidgetItem, QHeaderView, QButtonGroup, QRadioButton, QFileDialog
 from quickfeatures.__about__ import __title__
 from quickfeatures.template.template_classes import TemplateTableModel
 
@@ -29,13 +29,6 @@ class MyPluginWidget(QWidget):
         self.load_data_button.clicked.connect(self.load_data)
         self.clear_templates_button.clicked.connect(self.table_model.clear_templates)
 
-    def load_data(self):
-
-        self.table_model.from_json(
-            Path('C:/Users/aplowrig/Work/dev/qgis_plugins/quickfeatures/template_group.json'))
-
-        QgsMessageLog.logMessage(f"Loaded {len(self.table_model.templates)} templates", tag=__title__, level=Qgis.Success)
-
     def init_table(self):
 
         # Set table's model
@@ -50,3 +43,9 @@ class MyPluginWidget(QWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+
+    def load_data(self):
+
+        fname = QFileDialog.getOpenFileName(self, 'Open file', 'c:\\', "JSON file (*.json)")
+
+        self.table_model.from_json(Path(fname[0]))
