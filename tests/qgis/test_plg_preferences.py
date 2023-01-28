@@ -18,11 +18,6 @@ from qgis.testing import unittest
 from quickfeatures.__about__ import __version__
 from quickfeatures.toolbelt.preferences import PlgSettingsStructure
 
-# ############################################################################
-# ########## Classes #############
-# ################################
-
-
 class TestPlgPreferences(unittest.TestCase):
     def test_plg_preferences_structure(self):
         """Test settings types and default values."""
@@ -37,8 +32,6 @@ class TestPlgPreferences(unittest.TestCase):
         self.assertIsInstance(settings.version, str)
         self.assertEqual(settings.version, __version__)
 
-# ############################################################################
-# ####### Stand-alone run ########
-# ################################
+
 if __name__ == "__main__":
     unittest.main()

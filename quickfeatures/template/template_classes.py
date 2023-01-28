@@ -1,6 +1,7 @@
 from quickfeatures.template.template_functions import *
 from typing import Dict, List
 from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis
+from qgis.utils import iface
 from quickfeatures.__about__ import __title__
 from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QObject, pyqtSignal
 from qgis.PyQt.QtGui import QKeySequence
@@ -15,50 +16,66 @@ class Template(QObject):
     deactivated = pyqtSignal()
     beginActivation = pyqtSignal()
 
-    def __init__(self, parent, name: str, shortcut_str: str, map_lyr_name: str,
+    validated = pyqtSignal()
+    invalidated = pyqtSignal()
+
+    def __init__(self, parent, name: str, shortcut_str: str, map_lyr: QgsMapLayer,
                  default_values: Dict[str, QgsDefaultValue]):
 
         super().__init__(parent)
 
         self.name = name
-        self.map_lyr_name = map_lyr_name
-        self.default_values = default_values
-        self.shortcut_str = shortcut_str
+
+        self.map_lyr = map_lyr
 
         # Register shortcut
+        self.shortcut_str = shortcut_str
         self.shortcut = None
         self.register_shortcut(parent)
 
-        # Store default values and 'suppression' setting for when template is deactivated
+        # Store default values and 'dialog suppression' setting for when template is deactivated
+        self.default_values = default_values
         self.revert_suppress = 0
         self.revert_values = {}
 
         # Switches
-        self.valid = False
         self.active = False
+        self.valid = True
 
         # Attempt to load layer
-        self.map_lyr = None
-        self.load_lyr()
+
+
+        #QgsProject.instance().layersAdded.connect(self.check_new_layers)
+        #QgsProject.instance().layersRemoved.connect(self.check_lyr_validity)
+
+    # def check_new_layers(self, layers):
+    #     if self.map_lyr is None:
+
+
+    # def check_valid(self):
+    #     if self.map_lyr is not None:
+    #         self.validate()
+    #     else:
+    #         self.invalidate()
+
+    def set_validity(self, value):
+        if value:
+            if not self.valid:
+                self.valid = True
+                self.validated.emit()
+        else:
+            if self.valid:
+                self.valid = False
+                self.invalidated.emit()
 
     def __del__(self):
         self.unregister_shortcut()
 
-    def load_lyr(self):
-        map_lyrs = QgsProject().instance().mapLayersByName(self.map_lyr_name)
-        if len(map_lyrs) == 1:
-            self.map_lyr = map_lyrs[0]
-            self.valid = True
-            QgsMessageLog.logMessage(f"Loaded layer {self.map_lyr_name}", tag=__title__, level=Qgis.Info)
-        elif len(map_lyrs) == 0:
-            self.map_lyr = None
-            self.valid = False
-            QgsMessageLog.logMessage(f"Found no map layers named {self.map_lyr_name}", tag=__title__,
-                                     level=Qgis.Critical)
+    def map_lyr_name(self) -> str:
+        if self.map_lyr:
+            return self.map_lyr.name()
         else:
-            self.map_lyr = None
-            self.valid = False
-            QgsMessageLog.logMessage(f"Multiple layers named {self.map_lyr_name}", tag=__title__, level=Qgis.Critical)
+            return 'None'
 
     def default_values_to_str(self) -> str:
         vals = self.default_values
@@ -66,48 +83,46 @@ class Template(QObject):
 
     def toggle(self):
 
-        if self.active:
-            self.deactivate()
+        self.set_active(not self.is_active())
+
+
+    def set_active(self, value) -> None:
+
+        if value:
+            if not self.is_active():
+                QgsMessageLog.logMessage(f"Activated template '{self.name}'", tag=__title__, level=Qgis.Info)
+
+                # Emit signal
+                self.beginActivation.emit()
+
+                # Get values that will be reverted
+                field_names = [field_name for field_name in self.default_values]
+                self.revert_values = get_existing_default_definitions(self.map_lyr, field_names)
+                self.revert_suppress = get_existing_form_suppress(self.map_lyr)
+
+                # Set default definition and suppress form
+                set_default_definitions(self.map_lyr, self.default_values)
+                set_form_suppress(self.map_lyr, 1)
+
+                # Set this template as active
+                self.active = True
+
+                # Emit signal
+                self.activated.emit()
+
         else:
-            self.activate()
+            if self.active:
+                QgsMessageLog.logMessage(f"Deactivated template '{self.name}'", tag=__title__, level=Qgis.Info)
 
-    def activate(self) -> None:
+                # Revert default value definitions and form suppression settings
+                set_default_definitions(self.map_lyr, self.revert_values)
+                set_form_suppress(self.map_lyr, self.revert_suppress)
 
-        if not self.active:
-            QgsMessageLog.logMessage(f"Activated template '{self.name}'", tag=__title__, level=Qgis.Info)
+                # Set this template as inactive
+                self.active = False
 
-            # Emit signal
-            self.beginActivation.emit()
-
-            # Get values that will be reverted
-            field_names = [field_name for field_name in self.default_values]
-            self.revert_values = get_existing_default_definitions(self.map_lyr, field_names)
-            self.revert_suppress = get_existing_form_suppress(self.map_lyr)
-
-            # Set default definition and suppress form
-            set_default_definitions(self.map_lyr, self.default_values)
-            set_form_suppress(self.map_lyr, 1)
-
-            # Set this template as active
-            self.active = True
-
-            # Emit signal
-            self.activated.emit()
-
-    def deactivate(self) -> None:
-
-        if self.active:
-            QgsMessageLog.logMessage(f"Deactivated template '{self.name}'", tag=__title__, level=Qgis.Info)
-
-            # Revert default value definitions and form suppression settings
-            set_default_definitions(self.map_lyr, self.revert_values)
-            set_form_suppress(self.map_lyr, self.revert_suppress)
-
-            # Set this template as inactive
-            self.active = False
-
-            # Emit signal
-            self.deactivated.emit()
+                # Emit signal
+                self.deactivated.emit()
 
     def register_shortcut(self, parent) -> None:
 
@@ -119,13 +134,19 @@ class Template(QObject):
         self.shortcut.setParent(None)
         self.shortcut.deleteLater()
 
+    def is_valid(self) -> bool:
+        return self.valid
+
+    def is_active(self) -> bool:
+        return self.active
+
 
 class TemplateTableModel(QAbstractTableModel):
     header_labels = [
         "Name",
         "Default Values",
+        "May Layer",
         "Shortcut",
-        "May Layer Name",
         "Valid",
         "Active",
     ]
@@ -167,10 +188,10 @@ class TemplateTableModel(QAbstractTableModel):
                 return self.templates[row].default_values_to_str()
             elif column_header_label == "Shortcut":
                 return self.templates[row].shortcut_str
-            elif column_header_label == "May Layer Name":
-                return self.templates[row].map_lyr_name
+            elif column_header_label == "May Layer":
+                return self.templates[row].map_lyr_name()
             elif column_header_label == "Valid":
-                return self.templates[row].valid
+                return self.templates[row].is_valid()
 
         if role == Qt.CheckStateRole:
             if column_header_label == "Active":
@@ -213,15 +234,18 @@ class TemplateTableModel(QAbstractTableModel):
             self.templates.append(template)
 
             template.beginActivation.connect(lambda temp=template: self.deactivate_other_templates(temp))
-            template.activated.connect(lambda temp=template: self.refresh_template_status(temp))
-            template.deactivated.connect(lambda temp=template: self.refresh_template_status(temp))
+            template.activated.connect(lambda temp=template, col_name='Active': self.refresh_template(temp, col_name))
+            template.deactivated.connect(lambda temp=template, col_name='Active': self.refresh_template(temp, col_name))
+
+            template.validated.connect(lambda temp=template, col_name='Valid': self.refresh_template(temp, col_name))
+            template.invalidated.connect(lambda temp=template, col_name='Valid': self.refresh_template(temp, col_name))
 
         self.endInsertRows()
 
-    def refresh_template_status(self, template: Template) -> None:
+    def refresh_template(self, template: Template, col_name: str) -> None:
 
         row = self.templates.index(template)
-        col = self.header_labels.index('Active')
+        col = self.header_labels.index(col_name)
         index = self.createIndex(row, col)
         self.dataChanged.emit(index, index)
 
@@ -230,11 +254,13 @@ class TemplateTableModel(QAbstractTableModel):
         # index_end = self.createIndex(self.rowCount() - 1, col)
         # self.dataChanged.emit(index_start, index_end)
 
+
+
     def deactivate_other_templates(self, template: Template) -> None:
 
         for row in range(len(self.templates)):
             if not self.templates[row] == template:
-                self.templates[row].deactivate()
+                self.templates[row].set_active(False)
 
     def remove_template(self, template: Template) -> None:
         try:
@@ -242,7 +268,7 @@ class TemplateTableModel(QAbstractTableModel):
 
             self.beginRemoveRows(QModelIndex(), row, row)
 
-            template.deactivate()
+            template.set_active(False)
             template.deleteLater()
 
             self.templates.remove(template)
@@ -258,7 +284,7 @@ class TemplateTableModel(QAbstractTableModel):
             self.beginRemoveRows(QModelIndex(), 0, self.rowCount() - 1)
 
             for template in self.templates:
-                template.deactivate()
+                template.set_active(False)
                 template.deleteLater()
 
             self.templates.clear()
@@ -279,9 +305,26 @@ class TemplateTableModel(QAbstractTableModel):
         templates = []
 
         for d in data:
+
             default_values = {key: QgsDefaultValue(f"'{value}'") for key, value in d['default_values'].items()}
+
+            map_lyr_name = d['map_lyr_name']
+            map_lyrs = QgsProject().instance().mapLayersByName(map_lyr_name)
+
+            map_lyr = None
+            if len(map_lyrs) == 1:
+                    map_lyr = map_lyrs[0]
+            elif len(map_lyrs) > 1:
+                    iface.messageBar().pushMessage("Multiple layers",
+                                                   f"Found multiple layers named {map_lyr_name}",
+                                                   level=Qgis.Warning, duration=3)
+            else:
+                    iface.messageBar().pushMessage("Layer not found",
+                                                   f"Could not find a layer named {map_lyr_name}",
+                                                   level=Qgis.Warning, duration=3)
+
             template = Template(parent=self.parent(), name=d['name'], shortcut_str=d['shortcut_str'],
-                                map_lyr_name=d['map_lyr_name'], default_values=default_values)
+                                map_lyr=map_lyr, default_values=default_values)
             templates.append(template)
 
         self.add_templates(templates)

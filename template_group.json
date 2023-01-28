@@ -18,6 +18,16 @@
 		},
 		"shortcut_str": "V"
 	
+	},
+	{
+		"name": "Test Failure",
+		"map_lyr_name": "test_points2",
+		"default_values": {
+			"name": "Failure",
+			"class": "failure"
+		},
+		"shortcut_str": "F"
+	
 	}
 ]
 

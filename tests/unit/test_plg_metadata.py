@@ -20,10 +20,6 @@ from semver import VersionInfo
 # project
 from quickfeatures import __about__
 
-# ############################################################################
-# ########## Classes #############
-# ################################
-
 
 class TestPluginMetadata(unittest.TestCase):
 
@@ -76,8 +72,5 @@ class TestPluginMetadata(unittest.TestCase):
         self.assertTrue(VersionInfo.isvalid(__about__.__version__))
 
 
-# ############################################################################
-# ####### Stand-alone run ########
-# ################################
 if __name__ == "__main__":
     unittest.main()
