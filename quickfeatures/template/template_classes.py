@@ -26,8 +26,6 @@ class Template(QObject):
 
         self.name = name
 
-        self.map_lyr = map_lyr
-
         # Register shortcut
         self.shortcut_str = shortcut_str
         self.shortcut = None
@@ -40,23 +38,26 @@ class Template(QObject):
 
         # Switches
         self.active = False
-        self.valid = True
+        self.valid = False
 
         # Attempt to load layer
+        self.map_lyr = None
+        self.load_map_lyr(map_lyr)
 
+    def load_map_lyr(self, map_lyr):
+        if map_lyr:
+            self.map_lyr.willBeDeleted.connect(self.remove_map_lyr)
+            self.set_validity(True)
 
-        #QgsProject.instance().layersAdded.connect(self.check_new_layers)
-        #QgsProject.instance().layersRemoved.connect(self.check_lyr_validity)
+    def remove_map_lyr(self):
+        self.map_lyr = None
+        self.set_validity(False)
 
-    # def check_new_layers(self, layers):
-    #     if self.map_lyr is None:
-
-
-    # def check_valid(self):
-    #     if self.map_lyr is not None:
-    #         self.validate()
-    #     else:
-    #         self.invalidate()
+    def map_lyr_name(self) -> str:
+        if self.map_lyr:
+            return self.map_lyr.name()
+        else:
+            return 'None'
 
     def set_validity(self, value):
         if value:
@@ -71,11 +72,6 @@ class Template(QObject):
     def __del__(self):
         self.unregister_shortcut()
 
-    def map_lyr_name(self) -> str:
-        if self.map_lyr:
-            return self.map_lyr.name()
-        else:
-            return 'None'
 
     def default_values_to_str(self) -> str:
         vals = self.default_values
@@ -234,11 +230,13 @@ class TemplateTableModel(QAbstractTableModel):
             self.templates.append(template)
 
             template.beginActivation.connect(lambda temp=template: self.deactivate_other_templates(temp))
+
+            # Not sure why these signals are needed for 'Active' but not for 'Valid', but that's how it is.
             template.activated.connect(lambda temp=template, col_name='Active': self.refresh_template(temp, col_name))
             template.deactivated.connect(lambda temp=template, col_name='Active': self.refresh_template(temp, col_name))
 
-            template.validated.connect(lambda temp=template, col_name='Valid': self.refresh_template(temp, col_name))
-            template.invalidated.connect(lambda temp=template, col_name='Valid': self.refresh_template(temp, col_name))
+            #template.validated.connect(lambda temp=template, col_name='Valid': self.refresh_template(temp, col_name))
+            #template.invalidated.connect(lambda temp=template, col_name='Valid': self.refresh_template(temp, col_name))
 
         self.endInsertRows()
 
