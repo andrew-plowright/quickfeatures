@@ -4,7 +4,7 @@ from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis
 from qgis.utils import iface
 from quickfeatures.__about__ import __title__
 from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QObject, pyqtSignal
-from qgis.PyQt.QtGui import QKeySequence
+from qgis.PyQt.QtGui import QKeySequence, QColor
 from qgis.PyQt.QtWidgets import QShortcut
 from pathlib import Path
 import json
@@ -46,6 +46,7 @@ class Template(QObject):
 
     def load_map_lyr(self, map_lyr):
         if map_lyr:
+            self.map_lyr = map_lyr
             self.map_lyr.willBeDeleted.connect(self.remove_map_lyr)
             self.set_validity(True)
 
@@ -85,7 +86,7 @@ class Template(QObject):
     def set_active(self, value) -> None:
 
         if value:
-            if not self.is_active():
+            if not self.is_active() and self.is_valid():
                 QgsMessageLog.logMessage(f"Activated template '{self.name}'", tag=__title__, level=Qgis.Info)
 
                 # Emit signal
@@ -139,12 +140,11 @@ class Template(QObject):
 
 class TemplateTableModel(QAbstractTableModel):
     header_labels = [
+        "Active",
+        "Shortcut",
         "Name",
         "Default Values",
         "May Layer",
-        "Shortcut",
-        "Valid",
-        "Active",
     ]
 
     templates = []
@@ -186,8 +186,6 @@ class TemplateTableModel(QAbstractTableModel):
                 return self.templates[row].shortcut_str
             elif column_header_label == "May Layer":
                 return self.templates[row].map_lyr_name()
-            elif column_header_label == "Valid":
-                return self.templates[row].is_valid()
 
         if role == Qt.CheckStateRole:
             if column_header_label == "Active":
@@ -195,6 +193,12 @@ class TemplateTableModel(QAbstractTableModel):
                     return Qt.Checked
                 else:
                     return Qt.Unchecked
+
+        if role == Qt.ForegroundRole:
+            if not self.templates[row].is_valid():
+                return QColor(200, 200, 200)
+
+
 
     def flags(self, index):
 
@@ -251,8 +255,6 @@ class TemplateTableModel(QAbstractTableModel):
         # index_start = self.createIndex(0, col)
         # index_end = self.createIndex(self.rowCount() - 1, col)
         # self.dataChanged.emit(index_start, index_end)
-
-
 
     def deactivate_other_templates(self, template: Template) -> None:
 
