@@ -1,14 +1,8 @@
-from qgis.core import QgsMapLayer
-from qgis.core import QgsDefaultValue
+from qgis.core import QgsMapLayer, QgsDefaultValue
 from typing import Dict
-from qgis.core import QgsMessageLog, Qgis
-from quickfeatures.__about__ import __title__
 
 
 def set_default_definitions(map_lyr: QgsMapLayer, default_values: Dict[str, QgsDefaultValue]) -> None:
-    #QgsMessageLog.logMessage(f"  Applying form default values of {str(default_values)} on {map_lyr.name()}", tag=__title__, level=Qgis.Info)
-    # Get field IDs and values
-    # NOTE: this way, missing fields will get caught before attempting to change anything
     field_ids = [get_field_id(map_lyr, field_name) for field_name in default_values]
     def_values = [default_values[field_name] for field_name in default_values]
 
@@ -27,8 +21,6 @@ def get_existing_default_definitions(map_lyr: QgsMapLayer, field_names: list) ->
 
 
 def set_form_suppress(map_lyr: QgsMapLayer, suppress: int) -> None:
-    #QgsMessageLog.logMessage(f"  Applying form suppresion of {str(suppress)} on {map_lyr.name()}", tag=__title__, level=Qgis.Info)
-
     edit_form = map_lyr.editFormConfig()
     edit_form.setSuppress(suppress)
     map_lyr.setEditFormConfig(edit_form)

@@ -7,8 +7,8 @@ from qgis.utils import showPluginHelp
 
 # project
 from quickfeatures.__about__ import __title__
-from quickfeatures.gui.dlg_settings import MyPluginOptionsFactory
-from quickfeatures.gui.plugin_widget import MyPluginWidget
+from quickfeatures.gui.settings_widget import QuickFeaturesOptionsFactory
+from quickfeatures.gui.dock_widget import MyPluginWidget
 
 
 class QuickFeatureCreatePlugin:
@@ -20,7 +20,7 @@ class QuickFeatureCreatePlugin:
     def initGui(self):
 
         # settings page within the QGIS preferences menu
-        self.options_factory = MyPluginOptionsFactory()
+        self.options_factory = QuickFeaturesOptionsFactory()
         self.iface.registerOptionsWidgetFactory(self.options_factory)
 
         # Action: Help button
@@ -35,7 +35,7 @@ class QuickFeatureCreatePlugin:
         wrench_icon = QIcon(":images/themes/default/console/iconSettingsConsole.svg")
         self.action_settings = QAction(wrench_icon, "Settings", self.iface.mainWindow())
         self.action_settings.triggered.connect(
-            lambda: self.iface.showOptionsDialog(currentPage=f"{__title__} Options Page")
+            lambda: self.iface.showOptionsDialog(currentPage=f"{__title__}")
         )
         self.iface.addPluginToMenu(__title__, self.action_settings)
 

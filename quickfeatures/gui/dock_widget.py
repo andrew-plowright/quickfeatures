@@ -1,8 +1,11 @@
 from pathlib import Path
-from qgis.core import QgsMessageLog
+from qgis.core import QgsMessageLog, QgsProject, Qgis
 from qgis.PyQt import uic
-from qgis.PyQt.QtWidgets import QWidget, QAction, QTableWidgetItem, QHeaderView, QButtonGroup, QRadioButton, QFileDialog
+from qgis.PyQt.QtWidgets import QWidget, QAction, QTableWidgetItem, QHeaderView, QButtonGroup, QRadioButton, \
+    QFileDialog, QPushButton
 from quickfeatures.template.template_classes import TemplateTableModel, QgsMapLayerComboDelegate
+import quickfeatures.toolbelt.preferences as plg_prefs_hdlr
+from quickfeatures.__about__ import __title__
 
 class MyPluginWidget(QWidget):
 
@@ -21,6 +24,9 @@ class MyPluginWidget(QWidget):
         # Connect buttons
         self.load_data_button.clicked.connect(self.load_data)
         self.clear_templates_button.clicked.connect(self.table_model.clear_templates)
+
+        # Button used for debugging purpose
+        self.debug_button()
 
     def init_table(self):
 
@@ -50,9 +56,36 @@ class MyPluginWidget(QWidget):
 
     def load_data(self):
 
-        fname = QFileDialog.getOpenFileName(self, 'Open file', 'c:\\', "JSON file (*.json)")
+        file_name = QFileDialog.getOpenFileName(self, 'Open file', 'c:\\', "JSON file (*.json)")[0]
 
-        self.table_model.from_json(Path(fname[0]))
+        if file_name != '':
+            self.table_model.from_json(Path(file_name))
 
     def clean_up(self):
         self.table_model.clear_templates()
+
+
+    def debug_button(self):
+
+        debug_mode = plg_prefs_hdlr.PlgOptionsManager.get_plg_settings().debug_mode
+
+        QgsMessageLog.logMessage(f"Found DEBUG mode and it was '{debug_mode}'", tag=__title__, level=Qgis.Info)
+
+        if debug_mode:
+
+            self.load_test_data_debug = QPushButton("Load Test Data", self)
+            self.debug_button = QPushButton("Debug", self)
+            self.debug_button_layout.addWidget(self.load_test_data_debug)
+            self.debug_button_layout.addWidget(self.debug_button)
+
+            self.load_test_data_debug.clicked.connect(self.debug_load_test_data)
+            self.debug_button.clicked.connect(self.debug_function)
+
+    def debug_load_test_data(self):
+
+        test_data_path = QgsProject.instance().readPath("./") + '/template_group.json'
+        self.table_model.from_json(Path(test_data_path))
+
+    def debug_function(self):
+        QgsMessageLog.logMessage(f"Debug message", tag=__title__, level=Qgis.Info)
+

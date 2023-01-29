@@ -28,7 +28,7 @@ from quickfeatures.toolbelt.preferences import PlgSettingsStructure
 
 FORM_CLASS, _ = uic.loadUiType(Path(__file__).parent / "{}.ui".format(Path(__file__).stem))
 
-class MyOptionsPageWidget(FORM_CLASS, QgsOptionsPageWidget):
+class QuickFeaturesOptionsPageWidget(FORM_CLASS, QgsOptionsPageWidget):
     """Settings form embedded into QGIS 'options' menu."""
 
     def __init__(self, parent):
@@ -97,7 +97,7 @@ class MyOptionsPageWidget(FORM_CLASS, QgsOptionsPageWidget):
         # update the form
         self.load_settings()
 
-class MyPluginOptionsFactory(QgsOptionsWidgetFactory):
+class QuickFeaturesOptionsFactory(QgsOptionsWidgetFactory):
     """Factory for options widget."""
 
     def __init__(self):
@@ -112,16 +112,16 @@ class MyPluginOptionsFactory(QgsOptionsWidgetFactory):
         """        
         return QIcon(str(__icon_path__))
 
-    def createWidget(self, parent) -> MyOptionsPageWidget:
+    def createWidget(self, parent) -> QuickFeaturesOptionsPageWidget:
         """Create settings widget.
 
         :param parent: Qt parent where to include the options page.
         :type parent: QObject
 
         :return: options page for tab widget
-        :rtype: MyOptionsPageWidget
+        :rtype: QuickFeaturesOptionsPageWidget
         """        
-        return MyOptionsPageWidget(parent)
+        return QuickFeaturesOptionsPageWidget(parent)
 
     def title(self) -> str:
         """Returns plugin title, used to name the tab in QGIS options tab widget.

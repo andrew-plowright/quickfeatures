@@ -12,6 +12,7 @@ import json
 
 
 class Template(QObject):
+
     # Custom signal emitted when template is activated or deactivated
     beginActivation = pyqtSignal()
     activateChanged = pyqtSignal(bool)
@@ -25,9 +26,9 @@ class Template(QObject):
         self.name = name
 
         # Register shortcut
+        self.shortuct = None
         self.shortcut_str = shortcut_str
-        self.shortcut = None
-        self.register_shortcut(parent)
+        self.create_shortcut(shortcut_str)
 
         # Store default values and 'dialog suppression' setting for when template is deactivated
         self.default_values = default_values
@@ -78,15 +79,16 @@ class Template(QObject):
 
     @staticmethod
     def confirm_deletion(self):
-        QgsMessageLog.logMessage(f"Confirm deletion!", tag=__title__, level=Qgis.Info)
+        ...
+        #QgsMessageLog.logMessage(f"Confirm deletion!", tag=__title__, level=Qgis.Info)
 
     def delete_template(self):
         self.set_active(False)
-        self.unregister_shortcut()
+        self.delete_shortcut()
         self.setParent(None)
         self.deleteLater()
 
-    def default_values_to_str(self) -> str:
+    def get_default_values_str(self) -> str:
         vals = self.default_values
         return ', '.join([key + ': ' + vals[key].expression() for key in vals])
 
@@ -98,7 +100,7 @@ class Template(QObject):
 
         if value:
             if not self.is_active() and self.is_valid():
-                QgsMessageLog.logMessage(f"Activated template '{self.name}'", tag=__title__, level=Qgis.Info)
+                #QgsMessageLog.logMessage(f"Activated template '{self.name}'", tag=__title__, level=Qgis.Info)
 
                 # Emit signal
                 self.beginActivation.emit()
@@ -114,13 +116,11 @@ class Template(QObject):
 
                 # Set this template as active
                 self.active = True
-
-                # Emit signal
                 self.activateChanged.emit(True)
 
         else:
             if self.active:
-                QgsMessageLog.logMessage(f"Deactivated template '{self.name}'", tag=__title__, level=Qgis.Info)
+                #QgsMessageLog.logMessage(f"Deactivated template '{self.name}'", tag=__title__, level=Qgis.Info)
 
                 # Revert default value definitions and form suppression settings
                 set_default_definitions(self.map_lyr, self.revert_values)
@@ -128,19 +128,23 @@ class Template(QObject):
 
                 # Set this template as inactive
                 self.active = False
-
-                # Emit signal
                 self.activateChanged.emit(False)
 
-    def register_shortcut(self, parent) -> None:
+    def set_shortcut(self, value) -> None:
+        self.shortcut_str = value
+        self.shortcut.setKey(QKeySequence(value))
 
-        self.shortcut = QShortcut(QKeySequence(self.shortcut_str), parent)
+    def create_shortcut(self, value) -> None:
+        parent = self.parent()
+        self.shortcut = QShortcut(QKeySequence(value), parent)
         self.shortcut.activated.connect(self.toggle)
 
-    def unregister_shortcut(self) -> None:
-
+    def delete_shortcut(self) -> None:
         self.shortcut.setParent(None)
         self.shortcut.deleteLater()
+
+    def get_shortcut_str(self) -> str:
+        return str(self.shortcut_str)
 
     def is_valid(self) -> bool:
         return self.valid
@@ -192,9 +196,9 @@ class TemplateTableModel(QAbstractTableModel):
             if column_header_label == "Name":
                 return self.templates[row].name
             elif column_header_label == "Default Values":
-                return self.templates[row].default_values_to_str()
+                return self.templates[row].get_default_values_str()
             elif column_header_label == "Shortcut":
-                return self.templates[row].shortcut_str
+                return self.templates[row].get_shortcut_str()
 
         if role == Qt.CheckStateRole:
             if column_header_label == "Active":
@@ -216,10 +220,8 @@ class TemplateTableModel(QAbstractTableModel):
 
         if column_header_label == 'Active':
             return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
-        elif column_header_label == 'Map Layer':
-            return Qt.ItemIsEnabled | Qt.ItemIsEditable
         else:
-            return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+            return Qt.ItemIsEnabled | Qt.ItemIsEditable
 
         # elif column_header_label == 'Map Layer':
         #     return Qt.ItemIsEditable | Qt.ItemIsEnabled
@@ -232,16 +234,27 @@ class TemplateTableModel(QAbstractTableModel):
             return False
 
         column_header_label = self.header_labels[index.column()]
+        template = self.templates[index.row()]
 
         if column_header_label == 'Active' and role == Qt.CheckStateRole:
-            template = self.templates[index.row()]
             template.toggle()
             return True
 
         if column_header_label == 'Map Layer' and role == Qt.EditRole:
-            template = self.templates[index.row()]
+
+            is_blank = value == ""
+            is_none = value == None
+            QgsMessageLog.logMessage(f"Input was None: {str(is_none)}", tag=__title__, level=Qgis.Info)
+            QgsMessageLog.logMessage(f"Input was Blank: {str(is_blank)}", tag=__title__, level=Qgis.Info)
+
             template.set_map_lyr(value)
             self.dataChanged.emit(index, index)
+            return True
+
+        if column_header_label == 'Shortcut':
+            if value == "":
+                value = None
+            template.set_shortcut(value)
             return True
 
 
