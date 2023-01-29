@@ -1,7 +1,7 @@
 from quickfeatures.template.template_functions import *
 from typing import Dict, List
 from qgis.gui import QgsMapLayerComboBox
-from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis
+from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis, QgsMapLayerProxyModel
 from qgis.utils import iface
 from quickfeatures.__about__ import __title__
 from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QObject, pyqtSignal, pyqtSlot
@@ -361,6 +361,7 @@ class QgsMapLayerComboDelegate(QItemDelegate):
 
     def createEditor(self, parent, option, index):
         combo = QgsMapLayerComboBox(parent)
+        combo.setFilters(QgsMapLayerProxyModel.VectorLayer)
         combo.setAllowEmptyLayer(True)
         combo.layerChanged.connect(self.layerSelected)
         return combo
