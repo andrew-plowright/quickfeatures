@@ -47,6 +47,9 @@ class QuickFeatureCreatePlugin:
 
     def unload(self):
 
+        # Clean up templates
+        self.dockwidget.widget().clean_up()
+
         # Clean up menu
         self.iface.removePluginMenu(__title__, self.action_help)
         self.iface.removePluginMenu(__title__, self.action_settings)

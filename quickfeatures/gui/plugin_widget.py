@@ -1,17 +1,8 @@
-#! python3  # noqa: E265
-
-"""
-    Plugin settings form integrated into QGIS 'Options' menu.
-"""
-
 from pathlib import Path
-from qgis.core import QgsMessageLog, Qgis
+from qgis.core import QgsMessageLog
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QWidget, QAction, QTableWidgetItem, QHeaderView, QButtonGroup, QRadioButton, QFileDialog
-from quickfeatures.__about__ import __title__
 from quickfeatures.template.template_classes import TemplateTableModel, QgsMapLayerComboDelegate
-
-from qgis.PyQt.QtCore import Qt
 
 class MyPluginWidget(QWidget):
 
@@ -62,3 +53,6 @@ class MyPluginWidget(QWidget):
         fname = QFileDialog.getOpenFileName(self, 'Open file', 'c:\\', "JSON file (*.json)")
 
         self.table_model.from_json(Path(fname[0]))
+
+    def clean_up(self):
+        self.table_model.clear_templates()

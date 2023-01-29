@@ -13,12 +13,9 @@ import json
 
 class Template(QObject):
     # Custom signal emitted when template is activated or deactivated
-    activated = pyqtSignal()
-    deactivated = pyqtSignal()
     beginActivation = pyqtSignal()
-
-    validated = pyqtSignal()
-    invalidated = pyqtSignal()
+    activateChanged = pyqtSignal(bool)
+    validChanged = pyqtSignal(bool)
 
     def __init__(self, parent, name: str, shortcut_str: str, map_lyr: QgsMapLayer,
                  default_values: Dict[str, QgsDefaultValue]):
@@ -45,7 +42,11 @@ class Template(QObject):
         self.map_lyr = None
         self.set_map_lyr(map_lyr)
 
+        self.destroyed.connect(self.confirm_deletion)
+
     def set_map_lyr(self, map_lyr):
+
+        self.set_active(False)
 
         if map_lyr:
             QgsMessageLog.logMessage(f"Loaded map layer '{map_lyr.name()}'", tag=__title__, level=Qgis.Info)
@@ -54,9 +55,9 @@ class Template(QObject):
             self.set_validity(True)
         else:
             QgsMessageLog.logMessage(f"Removed map layer'", tag=__title__, level=Qgis.Info)
+            self.map_lyr = None
             self.set_active(False)
             self.set_validity(False)
-            self.map_lyr = None
 
 
     def map_lyr_name(self) -> str:
@@ -69,14 +70,21 @@ class Template(QObject):
         if value:
             if not self.valid:
                 self.valid = True
-                self.validated.emit()
+                self.validChanged.emit(True)
         else:
             if self.valid:
                 self.valid = False
-                self.invalidated.emit()
+                self.validChanged.emit(False)
 
-    def __del__(self):
+    @staticmethod
+    def confirm_deletion(self):
+        QgsMessageLog.logMessage(f"Confirm deletion!", tag=__title__, level=Qgis.Info)
+
+    def delete_template(self):
+        self.set_active(False)
         self.unregister_shortcut()
+        self.setParent(None)
+        self.deleteLater()
 
     def default_values_to_str(self) -> str:
         vals = self.default_values
@@ -108,7 +116,7 @@ class Template(QObject):
                 self.active = True
 
                 # Emit signal
-                self.activated.emit()
+                self.activateChanged.emit(True)
 
         else:
             if self.active:
@@ -122,7 +130,7 @@ class Template(QObject):
                 self.active = False
 
                 # Emit signal
-                self.deactivated.emit()
+                self.activateChanged.emit(False)
 
     def register_shortcut(self, parent) -> None:
 
@@ -187,8 +195,6 @@ class TemplateTableModel(QAbstractTableModel):
                 return self.templates[row].default_values_to_str()
             elif column_header_label == "Shortcut":
                 return self.templates[row].shortcut_str
-            elif column_header_label == "May Layer":
-                return self.templates[row].map_lyr_name()
 
         if role == Qt.CheckStateRole:
             if column_header_label == "Active":
@@ -206,10 +212,7 @@ class TemplateTableModel(QAbstractTableModel):
         if not index.isValid():
             return Qt.NoItemFlags
 
-        row = index.row()
-
         column_header_label = self.header_labels[index.column()]
-
 
         if column_header_label == 'Active':
             return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
@@ -226,7 +229,7 @@ class TemplateTableModel(QAbstractTableModel):
     def setData(self, index, value, role=Qt.EditRole):
 
         if not index.isValid():
-            return None
+            return False
 
         column_header_label = self.header_labels[index.column()]
 
@@ -236,8 +239,11 @@ class TemplateTableModel(QAbstractTableModel):
             return True
 
         if column_header_label == 'Map Layer' and role == Qt.EditRole:
-            self.templates[index.row()].set_map_lyr(value)
+            template = self.templates[index.row()]
+            template.set_map_lyr(value)
+            self.dataChanged.emit(index, index)
             return True
+
 
     def add_templates(self, templates: List[Template]) -> None:
 
@@ -248,28 +254,22 @@ class TemplateTableModel(QAbstractTableModel):
         for template in templates:
             self.templates.append(template)
 
-            template.beginActivation.connect(lambda temp=template: self.deactivate_other_templates(temp))
+            template.beginActivation.connect(self.deactivate_other_templates)
 
-            # Not sure why these signals are needed for 'Active' but not for 'Valid', but that's how it is.
-            template.activated.connect(lambda temp=template, col_name='Active': self.refresh_template(temp, col_name))
-            template.deactivated.connect(lambda temp=template, col_name='Active': self.refresh_template(temp, col_name))
-
-            #template.validated.connect(lambda temp=template: self.refresh_template(temp))
-            #template.invalidated.connect(lambda temp=template: self.refresh_template(temp))
+            template.activateChanged.connect(self.refresh_template)
+            template.validChanged.connect(self.refresh_template)
 
         self.endInsertRows()
 
-    def refresh_template(self, template: Template, col_name: str = None) -> None:
+    @pyqtSlot()
+    def refresh_template(self) -> None:
 
-        row = self.templates.index(template)
+        #QgsMessageLog.logMessage(f"Loaded map layer '{self.sender()}'", tag=__title__, level=Qgis.Info)
 
-        if col_name:
-            col = self.header_labels.index(col_name)
-            index1 = self.createIndex(row, col)
-            index2 = self.createIndex(row, col)
-        else:
-            index1 = self.createIndex(row, 0)
-            index2 = self.createIndex(row, self.columnCount())
+        row = self.templates.index(self.sender())
+
+        index1 = self.createIndex(row, 0)
+        index2 = self.createIndex(row, self.columnCount())
 
         self.dataChanged.emit(index1, index2)
 
@@ -278,7 +278,10 @@ class TemplateTableModel(QAbstractTableModel):
         # index_end = self.createIndex(self.rowCount() - 1, col)
         # self.dataChanged.emit(index_start, index_end)
 
-    def deactivate_other_templates(self, template: Template) -> None:
+    @pyqtSlot()
+    def deactivate_other_templates(self) -> None:
+
+        template = self.sender()
 
         for row in range(len(self.templates)):
             if not self.templates[row] == template:
@@ -290,8 +293,7 @@ class TemplateTableModel(QAbstractTableModel):
 
             self.beginRemoveRows(QModelIndex(), row, row)
 
-            template.set_active(False)
-            template.deleteLater()
+            template.delete_template()
 
             self.templates.remove(template)
 
@@ -306,8 +308,8 @@ class TemplateTableModel(QAbstractTableModel):
             self.beginRemoveRows(QModelIndex(), 0, self.rowCount() - 1)
 
             for template in self.templates:
-                template.set_active(False)
-                template.deleteLater()
+
+                template.delete_template()
 
             self.templates.clear()
 
