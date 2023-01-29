@@ -1,11 +1,12 @@
 from quickfeatures.template.template_functions import *
 from typing import Dict, List
+from qgis.gui import QgsMapLayerComboBox
 from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis
 from qgis.utils import iface
 from quickfeatures.__about__ import __title__
-from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QObject, pyqtSignal
+from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QObject, pyqtSignal, pyqtSlot
 from qgis.PyQt.QtGui import QKeySequence, QColor
-from qgis.PyQt.QtWidgets import QShortcut
+from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QComboBox
 from pathlib import Path
 import json
 
@@ -40,19 +41,23 @@ class Template(QObject):
         self.active = False
         self.valid = False
 
-        # Attempt to load layer
+        # Set map layer
         self.map_lyr = None
-        self.load_map_lyr(map_lyr)
+        self.set_map_lyr(map_lyr)
 
-    def load_map_lyr(self, map_lyr):
+    def set_map_lyr(self, map_lyr):
+
         if map_lyr:
+            QgsMessageLog.logMessage(f"Loaded map layer '{map_lyr.name()}'", tag=__title__, level=Qgis.Info)
             self.map_lyr = map_lyr
-            self.map_lyr.willBeDeleted.connect(self.remove_map_lyr)
+            self.map_lyr.willBeDeleted.connect(lambda value=None : self.set_map_lyr(None))
             self.set_validity(True)
+        else:
+            QgsMessageLog.logMessage(f"Removed map layer'", tag=__title__, level=Qgis.Info)
+            self.set_active(False)
+            self.set_validity(False)
+            self.map_lyr = None
 
-    def remove_map_lyr(self):
-        self.map_lyr = None
-        self.set_validity(False)
 
     def map_lyr_name(self) -> str:
         if self.map_lyr:
@@ -73,7 +78,6 @@ class Template(QObject):
     def __del__(self):
         self.unregister_shortcut()
 
-
     def default_values_to_str(self) -> str:
         vals = self.default_values
         return ', '.join([key + ': ' + vals[key].expression() for key in vals])
@@ -81,7 +85,6 @@ class Template(QObject):
     def toggle(self):
 
         self.set_active(not self.is_active())
-
 
     def set_active(self, value) -> None:
 
@@ -144,7 +147,7 @@ class TemplateTableModel(QAbstractTableModel):
         "Shortcut",
         "Name",
         "Default Values",
-        "May Layer",
+        "Map Layer",
     ]
 
     templates = []
@@ -198,19 +201,27 @@ class TemplateTableModel(QAbstractTableModel):
             if not self.templates[row].is_valid():
                 return QColor(200, 200, 200)
 
-
-
     def flags(self, index):
 
         if not index.isValid():
-            return None
+            return Qt.NoItemFlags
+
+        row = index.row()
 
         column_header_label = self.header_labels[index.column()]
 
+
         if column_header_label == 'Active':
             return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
+        elif column_header_label == 'Map Layer':
+            return Qt.ItemIsEnabled | Qt.ItemIsEditable
         else:
             return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+
+        # elif column_header_label == 'Map Layer':
+        #     return Qt.ItemIsEditable | Qt.ItemIsEnabled
+        # else:
+        #     return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
 
     def setData(self, index, value, role=Qt.EditRole):
 
@@ -222,6 +233,10 @@ class TemplateTableModel(QAbstractTableModel):
         if column_header_label == 'Active' and role == Qt.CheckStateRole:
             template = self.templates[index.row()]
             template.toggle()
+            return True
+
+        if column_header_label == 'Map Layer' and role == Qt.EditRole:
+            self.templates[index.row()].set_map_lyr(value)
             return True
 
     def add_templates(self, templates: List[Template]) -> None:
@@ -239,17 +254,24 @@ class TemplateTableModel(QAbstractTableModel):
             template.activated.connect(lambda temp=template, col_name='Active': self.refresh_template(temp, col_name))
             template.deactivated.connect(lambda temp=template, col_name='Active': self.refresh_template(temp, col_name))
 
-            #template.validated.connect(lambda temp=template, col_name='Valid': self.refresh_template(temp, col_name))
-            #template.invalidated.connect(lambda temp=template, col_name='Valid': self.refresh_template(temp, col_name))
+            #template.validated.connect(lambda temp=template: self.refresh_template(temp))
+            #template.invalidated.connect(lambda temp=template: self.refresh_template(temp))
 
         self.endInsertRows()
 
-    def refresh_template(self, template: Template, col_name: str) -> None:
+    def refresh_template(self, template: Template, col_name: str = None) -> None:
 
         row = self.templates.index(template)
-        col = self.header_labels.index(col_name)
-        index = self.createIndex(row, col)
-        self.dataChanged.emit(index, index)
+
+        if col_name:
+            col = self.header_labels.index(col_name)
+            index1 = self.createIndex(row, col)
+            index2 = self.createIndex(row, col)
+        else:
+            index1 = self.createIndex(row, 0)
+            index2 = self.createIndex(row, self.columnCount())
+
+        self.dataChanged.emit(index1, index2)
 
         # col = self.header_labels.index('Active')
         # index_start = self.createIndex(0, col)
@@ -313,18 +335,45 @@ class TemplateTableModel(QAbstractTableModel):
 
             map_lyr = None
             if len(map_lyrs) == 1:
-                    map_lyr = map_lyrs[0]
+                map_lyr = map_lyrs[0]
             elif len(map_lyrs) > 1:
-                    iface.messageBar().pushMessage("Multiple layers",
-                                                   f"Found multiple layers named {map_lyr_name}",
-                                                   level=Qgis.Warning, duration=3)
+                iface.messageBar().pushMessage("Multiple layers",
+                                               f"Found multiple layers named {map_lyr_name}",
+                                               level=Qgis.Warning, duration=3)
             else:
-                    iface.messageBar().pushMessage("Layer not found",
-                                                   f"Could not find a layer named {map_lyr_name}",
-                                                   level=Qgis.Warning, duration=3)
+                iface.messageBar().pushMessage("Layer not found",
+                                               f"Could not find a layer named {map_lyr_name}",
+                                               level=Qgis.Warning, duration=3)
 
             template = Template(parent=self.parent(), name=d['name'], shortcut_str=d['shortcut_str'],
                                 map_lyr=map_lyr, default_values=default_values)
             templates.append(template)
 
         self.add_templates(templates)
+
+
+class QgsMapLayerComboDelegate(QItemDelegate):
+
+    def __init__(self, parent):
+        QItemDelegate.__init__(self, parent)
+
+    def createEditor(self, parent, option, index):
+        combo = QgsMapLayerComboBox(parent)
+        combo.setAllowEmptyLayer(True)
+        combo.layerChanged.connect(self.layerSelected)
+        return combo
+
+    def setEditorData(self, editor, index):
+        map_lyr = index.model().templates[index.row()].map_lyr
+        editor.setLayer(map_lyr)
+
+    def setModelData(self, editor, model, index):
+        model.setData(index, editor.currentLayer())
+
+    @pyqtSlot()
+    def layerSelected(self):
+        # This function simply closes the editor when a layer is selected so
+        # that the model data is changed immediately
+
+        #self.commitData.emit(self.sender())
+        self.closeEditor.emit(self.sender())

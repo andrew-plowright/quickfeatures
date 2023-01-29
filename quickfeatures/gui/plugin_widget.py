@@ -9,8 +9,9 @@ from qgis.core import QgsMessageLog, Qgis
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QWidget, QAction, QTableWidgetItem, QHeaderView, QButtonGroup, QRadioButton, QFileDialog
 from quickfeatures.__about__ import __title__
-from quickfeatures.template.template_classes import TemplateTableModel
+from quickfeatures.template.template_classes import TemplateTableModel, QgsMapLayerComboDelegate
 
+from qgis.PyQt.QtCore import Qt
 
 class MyPluginWidget(QWidget):
 
@@ -23,6 +24,7 @@ class MyPluginWidget(QWidget):
         # Load UI file
         uic.loadUi(Path(__file__).parent / "{}.ui".format(Path(__file__).stem), self)
 
+        # Initialize table
         self.init_table()
 
         # Connect buttons
@@ -33,16 +35,27 @@ class MyPluginWidget(QWidget):
 
         # Set table's model
         self.table_model = TemplateTableModel(parent=self, templates=None)
+        self.table_model.rowsInserted.connect(self.rows_inserted)
+
+        # Connect model to view
         self.table_view.setModel(self.table_model)
 
-        # Set column stretches
+        # Set delegate
+        map_lyr_col = 4
+        self.table_map_lyr_delegate = QgsMapLayerComboDelegate(self.table_view)
+        self.table_view.setItemDelegateForColumn(map_lyr_col, self.table_map_lyr_delegate)
+
+        # Set column sizes
         header = self.table_view.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        self.table_view.setColumnWidth(4, 100)
+        for col_num in [0, 1, 2]:
+            header.setSectionResizeMode(col_num, QHeaderView.ResizeMode.ResizeToContents)
+
+    def rows_inserted(self, parent, first, last):
+
+        for row in range(first, last + 1):
+            self.table_view.openPersistentEditor(self.table_model.index(row, 4))
 
     def load_data(self):
 
