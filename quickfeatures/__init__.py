@@ -1,5 +1,5 @@
 def classFactory(iface):
 
-    from .plugin_main import QuickFeatureCreatePlugin
+    from .plugin_main import QuickFeaturesPlugin
 
-    return QuickFeatureCreatePlugin(iface)
+    return QuickFeaturesPlugin(iface)

@@ -1,13 +1,14 @@
 from pathlib import Path
 from qgis.core import QgsMessageLog, QgsProject, Qgis
+from qgis.gui import QgsGui
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QWidget, QAction, QTableWidgetItem, QHeaderView, QButtonGroup, QRadioButton, \
-    QFileDialog, QPushButton
+    QFileDialog, QPushButton, QShortcut
 from quickfeatures.template.template_classes import TemplateTableModel, QgsMapLayerComboDelegate
 import quickfeatures.toolbelt.preferences as plg_prefs_hdlr
 from quickfeatures.__about__ import __title__
 
-class MyPluginWidget(QWidget):
+class QuickFeaturesWidget(QWidget):
 
     def __init__(self, parent=None):
 
@@ -45,7 +46,7 @@ class MyPluginWidget(QWidget):
         # Set column sizes
         header = self.table_view.horizontalHeader()
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        self.table_view.setColumnWidth(4, 100)
+        self.table_view.setColumnWidth(4, 150)
         for col_num in [0, 1, 2]:
             header.setSectionResizeMode(col_num, QHeaderView.ResizeMode.ResizeToContents)
 
@@ -88,4 +89,15 @@ class MyPluginWidget(QWidget):
 
     def debug_function(self):
         QgsMessageLog.logMessage(f"Debug message", tag=__title__, level=Qgis.Info)
+
+        QgsMessageLog.logMessage(f"My class is: {self.__class__.__name__}", tag=__title__, level=Qgis.Info)
+
+        existing_shortcuts = self.findChildren(QShortcut) + QgsGui.shortcutsManager().listShortcuts()
+
+        # Check if shortcut already exists
+        for sc in existing_shortcuts:
+            QgsMessageLog.logMessage(f"Widget's current shortcuts are: '{sc.key().toString()}'", tag=__title__, level=Qgis.Info)
+
+
+
 

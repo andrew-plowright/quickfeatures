@@ -1,6 +1,6 @@
 from quickfeatures.template.template_functions import *
 from typing import Dict, List
-from qgis.gui import QgsMapLayerComboBox
+from qgis.gui import QgsMapLayerComboBox, QgsGui
 from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis, QgsMapLayerProxyModel
 from qgis.utils import iface
 from quickfeatures.__about__ import __title__
@@ -25,10 +25,12 @@ class Template(QObject):
 
         self.name = name
 
+        QgsMessageLog.logMessage(f"Template's parent class is: {self.parent().__class__.__name__}", tag=__title__, level=Qgis.Info)
+
         # Register shortcut
-        self.shortuct = None
-        self.shortcut_str = shortcut_str
-        self.create_shortcut(shortcut_str)
+        self.shortcut = QShortcut(QKeySequence(), parent)
+        self.shortcut.activated.connect(self.toggle)
+        self.set_shortcut(shortcut_str)
 
         # Store default values and 'dialog suppression' setting for when template is deactivated
         self.default_values = default_values
@@ -130,14 +132,26 @@ class Template(QObject):
                 self.active = False
                 self.activateChanged.emit(False)
 
-    def set_shortcut(self, value) -> None:
+    def set_shortcut(self, value) -> bool:
+
+        if value:
+
+            # Get list of existing shortcuts
+            existing_shortcuts = QgsGui.shortcutsManager().listShortcuts() + \
+                                 self.parent().findChildren(QShortcut)
+
+            # Check if shortcut already exists
+            for sc in existing_shortcuts:
+                if value == sc.key().toString():
+                    iface.messageBar().pushMessage("Shortcut keys",
+                                                   f"The shortcut keys '{value}' is already being used",
+                                                   level=Qgis.Warning)
+                    self.shortcut_str = None
+                    return False
+
         self.shortcut_str = value
         self.shortcut.setKey(QKeySequence(value))
-
-    def create_shortcut(self, value) -> None:
-        parent = self.parent()
-        self.shortcut = QShortcut(QKeySequence(value), parent)
-        self.shortcut.activated.connect(self.toggle)
+        return True
 
     def delete_shortcut(self) -> None:
         self.shortcut.setParent(None)
@@ -254,8 +268,9 @@ class TemplateTableModel(QAbstractTableModel):
         if column_header_label == 'Shortcut':
             if value == "":
                 value = None
-            template.set_shortcut(value)
-            return True
+
+            return template.set_shortcut(value)
+
 
 
     def add_templates(self, templates: List[Template]) -> None:

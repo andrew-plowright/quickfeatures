@@ -8,10 +8,10 @@ from qgis.utils import showPluginHelp
 # project
 from quickfeatures.__about__ import __title__
 from quickfeatures.gui.settings_widget import QuickFeaturesOptionsFactory
-from quickfeatures.gui.dock_widget import MyPluginWidget
+from quickfeatures.gui.quick_features_widget import QuickFeaturesWidget
 
 
-class QuickFeatureCreatePlugin:
+class QuickFeaturesPlugin:
 
     def __init__(self, iface: QgisInterface):
 
@@ -41,7 +41,7 @@ class QuickFeatureCreatePlugin:
 
         # Load Dock Widget
         self.dockwidget = QDockWidget(__title__, self.iface.mainWindow())
-        self.dockwidget.setWidget(MyPluginWidget(self.iface.mainWindow()))
+        self.dockwidget.setWidget(QuickFeaturesWidget(self.iface.mainWindow()))
         self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
 
 
