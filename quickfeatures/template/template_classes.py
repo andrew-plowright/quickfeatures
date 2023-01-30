@@ -12,7 +12,6 @@ import json
 
 
 class Template(QObject):
-
     # Custom signal emitted when template is activated or deactivated
     beginActivation = pyqtSignal()
     activateChanged = pyqtSignal(bool)
@@ -25,7 +24,8 @@ class Template(QObject):
 
         self.name = name
 
-        QgsMessageLog.logMessage(f"Template's parent class is: {self.parent().__class__.__name__}", tag=__title__, level=Qgis.Info)
+        QgsMessageLog.logMessage(f"Template's parent class is: {self.parent().__class__.__name__}", tag=__title__,
+                                 level=Qgis.Info)
 
         # Register shortcut
         self.shortcut = QShortcut(QKeySequence(), parent)
@@ -47,21 +47,30 @@ class Template(QObject):
 
         self.destroyed.connect(self.confirm_deletion)
 
+    def get_name(self) -> None:
+        return self.name
+
+    def set_name(self, name) -> bool:
+        if name is None:
+            return False
+        else:
+            self.name = name
+            return True
+
     def set_map_lyr(self, map_lyr):
 
         self.set_active(False)
 
         if map_lyr:
-            QgsMessageLog.logMessage(f"Loaded map layer '{map_lyr.name()}'", tag=__title__, level=Qgis.Info)
+            #QgsMessageLog.logMessage(f"Loaded map layer '{map_lyr.name()}'", tag=__title__, level=Qgis.Info)
             self.map_lyr = map_lyr
-            self.map_lyr.willBeDeleted.connect(lambda value=None : self.set_map_lyr(None))
+            self.map_lyr.willBeDeleted.connect(lambda value=None: self.set_map_lyr(None))
             self.set_validity(True)
         else:
-            QgsMessageLog.logMessage(f"Removed map layer'", tag=__title__, level=Qgis.Info)
+            #QgsMessageLog.logMessage(f"Removed map layer'", tag=__title__, level=Qgis.Info)
             self.map_lyr = None
             self.set_active(False)
             self.set_validity(False)
-
 
     def map_lyr_name(self) -> str:
         if self.map_lyr:
@@ -82,7 +91,7 @@ class Template(QObject):
     @staticmethod
     def confirm_deletion(self):
         ...
-        #QgsMessageLog.logMessage(f"Confirm deletion!", tag=__title__, level=Qgis.Info)
+        # QgsMessageLog.logMessage(f"Confirm deletion!", tag=__title__, level=Qgis.Info)
 
     def delete_template(self):
         self.set_active(False)
@@ -102,7 +111,7 @@ class Template(QObject):
 
         if value:
             if not self.is_active() and self.is_valid():
-                #QgsMessageLog.logMessage(f"Activated template '{self.name}'", tag=__title__, level=Qgis.Info)
+                # QgsMessageLog.logMessage(f"Activated template '{self.name}'", tag=__title__, level=Qgis.Info)
 
                 # Emit signal
                 self.beginActivation.emit()
@@ -122,7 +131,7 @@ class Template(QObject):
 
         else:
             if self.active:
-                #QgsMessageLog.logMessage(f"Deactivated template '{self.name}'", tag=__title__, level=Qgis.Info)
+                # QgsMessageLog.logMessage(f"Deactivated template '{self.name}'", tag=__title__, level=Qgis.Info)
 
                 # Revert default value definitions and form suppression settings
                 set_default_definitions(self.map_lyr, self.revert_values)
@@ -146,10 +155,8 @@ class Template(QObject):
                     iface.messageBar().pushMessage("Shortcut keys",
                                                    f"The shortcut keys '{value}' is already being used",
                                                    level=Qgis.Warning)
-                    self.shortcut_str = None
                     return False
 
-        self.shortcut_str = value
         self.shortcut.setKey(QKeySequence(value))
         return True
 
@@ -158,7 +165,10 @@ class Template(QObject):
         self.shortcut.deleteLater()
 
     def get_shortcut_str(self) -> str:
-        return str(self.shortcut_str)
+        str = self.shortcut.key().toString()
+        if str == '':
+            str = 'None'
+        return str
 
     def is_valid(self) -> bool:
         return self.valid
@@ -173,7 +183,7 @@ class TemplateTableModel(QAbstractTableModel):
         "Shortcut",
         "Name",
         "Default Values",
-        "Map Layer",
+        "Layer",
     ]
 
     templates = []
@@ -206,24 +216,34 @@ class TemplateTableModel(QAbstractTableModel):
         if row >= len(self.templates):
             return QVariant()
 
+        template = self.templates[row]
+
         if role == Qt.ItemDataRole.DisplayRole:
             if column_header_label == "Name":
-                return self.templates[row].name
+                return template.get_name()
             elif column_header_label == "Default Values":
-                return self.templates[row].get_default_values_str()
+                return template.get_default_values_str()
             elif column_header_label == "Shortcut":
-                return self.templates[row].get_shortcut_str()
+                return template.get_shortcut_str()
 
         if role == Qt.CheckStateRole:
             if column_header_label == "Active":
-                if self.templates[row].active:
+                if template.active:
                     return Qt.Checked
                 else:
                     return Qt.Unchecked
 
+        if role == Qt.BackgroundRole:
+            if template.is_active():
+                return QColor(220, 255, 220)
+
         if role == Qt.ForegroundRole:
-            if not self.templates[row].is_valid():
+            if not template.is_valid():
                 return QColor(200, 200, 200)
+
+            if column_header_label == "Shortcut":
+                if template.shortcut.key().toString() == "":
+                    return QColor(200, 200, 200)
 
     def flags(self, index):
 
@@ -237,7 +257,7 @@ class TemplateTableModel(QAbstractTableModel):
         else:
             return Qt.ItemIsEnabled | Qt.ItemIsEditable
 
-        # elif column_header_label == 'Map Layer':
+        # elif column_header_label == 'Layer':
         #     return Qt.ItemIsEditable | Qt.ItemIsEnabled
         # else:
         #     return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
@@ -254,13 +274,7 @@ class TemplateTableModel(QAbstractTableModel):
             template.toggle()
             return True
 
-        if column_header_label == 'Map Layer' and role == Qt.EditRole:
-
-            is_blank = value == ""
-            is_none = value == None
-            QgsMessageLog.logMessage(f"Input was None: {str(is_none)}", tag=__title__, level=Qgis.Info)
-            QgsMessageLog.logMessage(f"Input was Blank: {str(is_blank)}", tag=__title__, level=Qgis.Info)
-
+        if column_header_label == 'Layer' and role == Qt.EditRole:
             template.set_map_lyr(value)
             self.dataChanged.emit(index, index)
             return True
@@ -268,9 +282,12 @@ class TemplateTableModel(QAbstractTableModel):
         if column_header_label == 'Shortcut':
             if value == "":
                 value = None
-
             return template.set_shortcut(value)
 
+        if column_header_label == 'Name':
+            if value == "":
+                value = None
+            return template.set_name(value)
 
 
     def add_templates(self, templates: List[Template]) -> None:
@@ -292,7 +309,7 @@ class TemplateTableModel(QAbstractTableModel):
     @pyqtSlot()
     def refresh_template(self) -> None:
 
-        #QgsMessageLog.logMessage(f"Loaded map layer '{self.sender()}'", tag=__title__, level=Qgis.Info)
+        # QgsMessageLog.logMessage(f"Loaded map layer '{self.sender()}'", tag=__title__, level=Qgis.Info)
 
         row = self.templates.index(self.sender())
 
@@ -336,7 +353,6 @@ class TemplateTableModel(QAbstractTableModel):
             self.beginRemoveRows(QModelIndex(), 0, self.rowCount() - 1)
 
             for template in self.templates:
-
                 template.delete_template()
 
             self.templates.clear()
@@ -406,5 +422,5 @@ class QgsMapLayerComboDelegate(QItemDelegate):
         # This function simply closes the editor when a layer is selected so
         # that the model data is changed immediately
 
-        #self.commitData.emit(self.sender())
+        # self.commitData.emit(self.sender())
         self.closeEditor.emit(self.sender())

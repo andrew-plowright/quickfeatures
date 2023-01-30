@@ -14,11 +14,14 @@ from quickfeatures.gui.quick_features_widget import QuickFeaturesWidget
 class QuickFeaturesPlugin:
 
     def __init__(self, iface: QgisInterface):
+        self.dock_widget = None
+        self.action_settings = None
+        self.action_help = None
+        self.options_factory = None
 
         self.iface = iface
 
     def initGui(self):
-
         # settings page within the QGIS preferences menu
         self.options_factory = QuickFeaturesOptionsFactory()
         self.iface.registerOptionsWidgetFactory(self.options_factory)
@@ -40,15 +43,13 @@ class QuickFeaturesPlugin:
         self.iface.addPluginToMenu(__title__, self.action_settings)
 
         # Load Dock Widget
-        self.dockwidget = QDockWidget(__title__, self.iface.mainWindow())
-        self.dockwidget.setWidget(QuickFeaturesWidget(self.iface.mainWindow()))
-        self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
-
+        self.dock_widget = QDockWidget(__title__, self.iface.mainWindow())
+        self.dock_widget.setWidget(QuickFeaturesWidget(self.iface.mainWindow()))
+        self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dock_widget)
 
     def unload(self):
-
         # Clean up templates
-        self.dockwidget.widget().clean_up()
+        self.dock_widget.widget().clean_up()
 
         # Clean up menu
         self.iface.removePluginMenu(__title__, self.action_help)
@@ -62,8 +63,6 @@ class QuickFeaturesPlugin:
         self.iface.unregisterOptionsWidgetFactory(self.options_factory)
 
         # Clean up dock widget
-        self.dockwidget.hide()
-        self.iface.removeDockWidget(self.dockwidget)
-        self.dockwidget.deleteLater()
-
-
+        self.dock_widget.hide()
+        self.iface.removeDockWidget(self.dock_widget)
+        self.dock_widget.deleteLater()
