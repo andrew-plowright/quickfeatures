@@ -3,7 +3,7 @@ from qgis.core import QgsMessageLog, QgsProject, Qgis
 from qgis.gui import QgsGui
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QWidget, QAction, QTableWidgetItem, QHeaderView, QButtonGroup, QRadioButton, \
-    QFileDialog, QPushButton, QShortcut
+    QFileDialog, QPushButton, QShortcut, QApplication
 from quickfeatures.template.template_classes import TemplateTableModel, QgsMapLayerComboDelegate
 import quickfeatures.toolbelt.preferences as plg_prefs_hdlr
 from quickfeatures.__about__ import __title__
@@ -92,12 +92,27 @@ class QuickFeaturesWidget(QWidget):
 
         QgsMessageLog.logMessage(f"My class is: {self.__class__.__name__}", tag=__title__, level=Qgis.Info)
 
-        existing_shortcuts = self.findChildren(QShortcut) + QgsGui.shortcutsManager().listShortcuts()
+        #existing_shortcuts = self.findChildren(QShortcut) + QgsGui.shortcutsManager().listShortcuts()
+
+        existing_shortcuts = []
+
+        for widget in QApplication.topLevelWidgets():
+
+            shortcut_keys = [shortcut.key().toString() for shortcut in widget.findChildren(QShortcut)]
+            action_keys = [action.shortcut().toString() for action in widget.findChildren(QAction)]
+
+            existing_shortcuts.extend(shortcut_keys)
+            existing_shortcuts.extend(action_keys)
+
 
         # Check if shortcut already exists
+        existing_shortcuts = []
+        for widget in QApplication.topLevelWidgets():
+            shortcut_keys = [shortcut.key().toString() for shortcut in widget.findChildren(QShortcut)]
+            action_keys = [action.shortcut().toString() for action in widget.findChildren(QAction) if not action.shortcut().isEmpty()]
+            existing_shortcuts.extend(shortcut_keys)
+            existing_shortcuts.extend(action_keys)
+
         for sc in existing_shortcuts:
-            QgsMessageLog.logMessage(f"Widget's current shortcuts are: '{sc.key().toString()}'", tag=__title__, level=Qgis.Info)
-
-
-
+            QgsMessageLog.logMessage(f"Widget's current shortcuts are: '{sc}'", tag=__title__, level=Qgis.Info)
 

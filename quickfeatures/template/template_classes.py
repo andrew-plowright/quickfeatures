@@ -6,7 +6,7 @@ from qgis.utils import iface
 from quickfeatures.__about__ import __title__
 from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QObject, pyqtSignal, pyqtSlot
 from qgis.PyQt.QtGui import QKeySequence, QColor
-from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QComboBox
+from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QComboBox, QApplication, QAction
 from pathlib import Path
 import json
 
@@ -146,12 +146,17 @@ class Template(QObject):
         if value:
 
             # Get list of existing shortcuts
-            existing_shortcuts = QgsGui.shortcutsManager().listShortcuts() + \
-                                 self.parent().findChildren(QShortcut)
+            existing_shortcuts = []
+            for widget in QApplication.topLevelWidgets():
+                shortcut_keys = [shortcut.key().toString() for shortcut in widget.findChildren(QShortcut)]
+                action_keys = [action.shortcut().toString() for action in widget.findChildren(QAction) if
+                               not action.shortcut().isEmpty()]
+                existing_shortcuts.extend(shortcut_keys)
+                existing_shortcuts.extend(action_keys)
 
             # Check if shortcut already exists
             for sc in existing_shortcuts:
-                if value == sc.key().toString():
+                if value == sc:
                     iface.messageBar().pushMessage("Shortcut keys",
                                                    f"The shortcut keys '{value}' is already being used",
                                                    level=Qgis.Warning)
