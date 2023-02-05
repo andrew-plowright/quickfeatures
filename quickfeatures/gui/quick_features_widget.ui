@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>648</width>
+    <width>565</width>
     <height>371</height>
    </rect>
   </property>
@@ -33,7 +33,11 @@
     </layout>
    </item>
    <item>
-    <widget class="QTableView" name="table_view"/>
+    <widget class="QTableView" name="table_view">
+     <attribute name="verticalHeaderVisible">
+      <bool>false</bool>
+     </attribute>
+    </widget>
    </item>
    <item>
     <layout class="QHBoxLayout" name="debug_button_layout"/>

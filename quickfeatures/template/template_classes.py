@@ -1,19 +1,20 @@
 
 from quickfeatures.template.template_functions import *
 from quickfeatures.gui.default_value_editor import *
+from quickfeatures.__about__ import __title__
+
 from typing import Dict, List
+from pathlib import Path
+import json
+
 from qgis.gui import QgsMapLayerComboBox, QgsGui
 from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis, QgsMapLayerProxyModel, QgsMapLayer
 from qgis.utils import iface
-from quickfeatures.__about__ import __title__
+
 from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QObject, pyqtSignal, pyqtSlot
 from qgis.PyQt.QtGui import QKeySequence, QColor, QCursor
 from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QComboBox, QApplication, QAction, QWidget, QLineEdit, \
     QHBoxLayout, QVBoxLayout, QPushButton, QDialog, QLabel
-from pathlib import Path
-
-import json
-
 
 class Template(QObject):
     # Custom signal emitted when template is activated or deactivated
@@ -202,18 +203,19 @@ class Template(QObject):
 
 
 class TemplateTableModel(QAbstractTableModel):
+
     header_labels = [
         "Active",
-        "Shortcut",
         "Name",
+        "Shortcut",
         "Default Values",
         "Layer",
     ]
 
-    templates = []
-
-    def __init__(self, parent=None, templates: List[Template] = None):
+    def __init__(self, parent, templates: List[Template] = None):
         super().__init__(parent)
+
+        self.templates = []
         if templates is not None:
             self.templates = templates
 
@@ -252,7 +254,7 @@ class TemplateTableModel(QAbstractTableModel):
 
         if role == Qt.CheckStateRole:
             if column_header_label == "Active":
-                if template.active:
+                if template.is_active():
                     return Qt.Checked
                 else:
                     return Qt.Unchecked
@@ -263,11 +265,11 @@ class TemplateTableModel(QAbstractTableModel):
 
         if role == Qt.ForegroundRole:
             if not template.is_valid():
-                return QColor(200, 200, 200)
+                return QColor(180, 180, 180)
 
             if column_header_label == "Shortcut":
                 if template.shortcut.key().toString() == "":
-                    return QColor(200, 200, 200)
+                    return QColor(180, 180, 180)
 
     def flags(self, index):
 
@@ -275,11 +277,15 @@ class TemplateTableModel(QAbstractTableModel):
             return Qt.NoItemFlags
 
         column_header_label = self.header_labels[index.column()]
+        template = self.templates[index.row()]
 
         if column_header_label == 'Active':
             return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
+        if column_header_label == 'Default Values' and not template.is_valid():
+            return Qt.ItemIsEnabled
         else:
             return Qt.ItemIsEnabled | Qt.ItemIsEditable
+
 
         # elif column_header_label == 'Layer':
         #     return Qt.ItemIsEditable | Qt.ItemIsEnabled
@@ -390,7 +396,7 @@ class TemplateTableModel(QAbstractTableModel):
 
     def print_templates(self) -> None:
         for tp in self.templates:
-            print({f"Template: '{tp.name}', Active: {str(tp.active)}"})
+            print({f"Template: '{tp.get_name()}', Active: {str(tp.is_active())}"})
 
     def from_json(self, path: Path):
 
@@ -469,5 +475,9 @@ class DefaultValueDelegate(QItemDelegate):
 
     def setModelData(self, editor, model, index):
         if editor.result() == QDialog.Accepted:
-            data = editor.default_values()
+            data = editor.get_default_values()
             model.setData(index, data)
+
+    def setEditorData(self, editor, index):
+        template = index.model().templates[index.row()]
+        editor.set_default_values(template.default_values)

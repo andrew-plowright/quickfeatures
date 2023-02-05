@@ -46,7 +46,6 @@ class QuickFeaturesWidget(QWidget):
         self.default_value_delegate = DefaultValueDelegate(self.table_view)
         self.table_view.setItemDelegateForColumn(default_value_col, self.default_value_delegate)
 
-
         # Set column sizes
         header = self.table_view.horizontalHeader()
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
@@ -58,6 +57,7 @@ class QuickFeaturesWidget(QWidget):
 
         for row in range(first, last + 1):
             self.table_view.openPersistentEditor(self.table_model.index(row, 4))
+
 
     def load_data(self):
 
@@ -98,25 +98,6 @@ class QuickFeaturesWidget(QWidget):
 
         #existing_shortcuts = self.findChildren(QShortcut) + QgsGui.shortcutsManager().listShortcuts()
 
-        existing_shortcuts = []
-
-        for widget in QApplication.topLevelWidgets():
-
-            shortcut_keys = [shortcut.key().toString() for shortcut in widget.findChildren(QShortcut)]
-            action_keys = [action.shortcut().toString() for action in widget.findChildren(QAction)]
-
-            existing_shortcuts.extend(shortcut_keys)
-            existing_shortcuts.extend(action_keys)
 
 
-        # Check if shortcut already exists
-        existing_shortcuts = []
-        for widget in QApplication.topLevelWidgets():
-            shortcut_keys = [shortcut.key().toString() for shortcut in widget.findChildren(QShortcut)]
-            action_keys = [action.shortcut().toString() for action in widget.findChildren(QAction) if not action.shortcut().isEmpty()]
-            existing_shortcuts.extend(shortcut_keys)
-            existing_shortcuts.extend(action_keys)
-
-        for sc in existing_shortcuts:
-            QgsMessageLog.logMessage(f"Widget's current shortcuts are: '{sc}'", tag=__title__, level=Qgis.Info)
 
