@@ -1,13 +1,17 @@
+
 from quickfeatures.template.template_functions import *
+from quickfeatures.gui.default_value_editor import *
 from typing import Dict, List
 from qgis.gui import QgsMapLayerComboBox, QgsGui
-from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis, QgsMapLayerProxyModel
+from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis, QgsMapLayerProxyModel, QgsMapLayer
 from qgis.utils import iface
 from quickfeatures.__about__ import __title__
 from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QObject, pyqtSignal, pyqtSlot
-from qgis.PyQt.QtGui import QKeySequence, QColor
-from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QComboBox, QApplication, QAction
+from qgis.PyQt.QtGui import QKeySequence, QColor, QCursor
+from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QComboBox, QApplication, QAction, QWidget, QLineEdit, \
+    QHBoxLayout, QVBoxLayout, QPushButton, QDialog, QLabel
 from pathlib import Path
+
 import json
 
 
@@ -103,6 +107,22 @@ class Template(QObject):
         vals = self.default_values
         return ', '.join([key + ': ' + vals[key].expression() for key in vals])
 
+    def set_default_values(self, values) -> bool:
+        QgsMessageLog.logMessage(f"Default values set: {values}", tag=__title__, level=Qgis.Info)
+
+        # TO DO HERE
+        # Check that all default values:
+        #   - Are valid
+        #   - Correspond to fields within the layer
+        # If not...
+        #   - Make invalid
+        #   - Deactivate
+        # If they ARE
+        #   - Make sure that set_default_definitions gets fired again
+        # Also
+        #   - Use this function in __init__ so that invalid default values are caught
+        return True
+
     def toggle(self):
 
         self.set_active(not self.is_active())
@@ -148,15 +168,14 @@ class Template(QObject):
             # Get list of existing shortcuts
             existing_shortcuts = []
             for widget in QApplication.topLevelWidgets():
-                shortcut_keys = [shortcut.key().toString() for shortcut in widget.findChildren(QShortcut)]
-                action_keys = [action.shortcut().toString() for action in widget.findChildren(QAction) if
-                               not action.shortcut().isEmpty()]
+                shortcut_keys = [shortcut.key() for shortcut in widget.findChildren(QShortcut)]
+                action_keys = [action.shortcut() for action in widget.findChildren(QAction)]
                 existing_shortcuts.extend(shortcut_keys)
                 existing_shortcuts.extend(action_keys)
 
             # Check if shortcut already exists
             for sc in existing_shortcuts:
-                if value == sc:
+                if sc.toString() and value == sc:
                     iface.messageBar().pushMessage("Shortcut keys",
                                                    f"The shortcut keys '{value}' is already being used",
                                                    level=Qgis.Warning)
@@ -294,6 +313,11 @@ class TemplateTableModel(QAbstractTableModel):
                 value = None
             return template.set_name(value)
 
+        if column_header_label == 'Default Values':
+            if value == "":
+                value = None
+            return template.set_default_values(value)
+
 
     def add_templates(self, templates: List[Template]) -> None:
 
@@ -406,21 +430,22 @@ class TemplateTableModel(QAbstractTableModel):
 class QgsMapLayerComboDelegate(QItemDelegate):
 
     def __init__(self, parent):
-        QItemDelegate.__init__(self, parent)
+        super().__init__(parent)
 
     def createEditor(self, parent, option, index):
-        combo = QgsMapLayerComboBox(parent)
-        combo.setFilters(QgsMapLayerProxyModel.VectorLayer)
-        combo.setAllowEmptyLayer(True)
-        combo.layerChanged.connect(self.layerSelected)
-        return combo
+        editor = QgsMapLayerComboBox(parent)
+        editor.setFilters(QgsMapLayerProxyModel.VectorLayer)
+        editor.setAllowEmptyLayer(True)
+        editor.layerChanged.connect(self.layerSelected)
+        return editor
 
     def setEditorData(self, editor, index):
         map_lyr = index.model().templates[index.row()].map_lyr
         editor.setLayer(map_lyr)
 
     def setModelData(self, editor, model, index):
-        model.setData(index, editor.currentLayer())
+        data = editor.currentLayer()
+        model.setData(index, data)
 
     @pyqtSlot()
     def layerSelected(self):
@@ -429,3 +454,20 @@ class QgsMapLayerComboDelegate(QItemDelegate):
 
         # self.commitData.emit(self.sender())
         self.closeEditor.emit(self.sender())
+
+
+class DefaultValueDelegate(QItemDelegate):
+
+    def __init__(self, parent):
+        super().__init__(parent)
+
+    def createEditor(self, parent, option, index):
+        map_lyr = index.model().templates[index.row()].map_lyr
+        editor = DefaultValueEditor(parent, map_lyr)
+        #editor.setWindowFlags(Qt.Popup)
+        return editor
+
+    def setModelData(self, editor, model, index):
+        if editor.result() == QDialog.Accepted:
+            data = editor.default_values()
+            model.setData(index, data)

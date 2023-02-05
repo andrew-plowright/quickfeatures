@@ -4,22 +4,20 @@ from qgis.gui import QgsGui
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QWidget, QAction, QTableWidgetItem, QHeaderView, QButtonGroup, QRadioButton, \
     QFileDialog, QPushButton, QShortcut, QApplication
-from quickfeatures.template.template_classes import TemplateTableModel, QgsMapLayerComboDelegate
+from quickfeatures.template.template_classes import TemplateTableModel, QgsMapLayerComboDelegate, DefaultValueDelegate
 import quickfeatures.toolbelt.preferences as plg_prefs_hdlr
 from quickfeatures.__about__ import __title__
 
 class QuickFeaturesWidget(QWidget):
 
     def __init__(self, parent=None):
-
         super().__init__(parent)
-
-        self.table_model = None
 
         # Load UI file
         uic.loadUi(Path(__file__).parent / "{}.ui".format(Path(__file__).stem), self)
 
         # Initialize table
+        self.table_model = None
         self.init_table()
 
         # Connect buttons
@@ -38,10 +36,16 @@ class QuickFeaturesWidget(QWidget):
         # Connect model to view
         self.table_view.setModel(self.table_model)
 
-        # Set delegate
+        # Set delegate for map layer column
         map_lyr_col = 4
         self.table_map_lyr_delegate = QgsMapLayerComboDelegate(self.table_view)
         self.table_view.setItemDelegateForColumn(map_lyr_col, self.table_map_lyr_delegate)
+
+        # Set delegate for default values column
+        default_value_col = 3
+        self.default_value_delegate = DefaultValueDelegate(self.table_view)
+        self.table_view.setItemDelegateForColumn(default_value_col, self.default_value_delegate)
+
 
         # Set column sizes
         header = self.table_view.horizontalHeader()
