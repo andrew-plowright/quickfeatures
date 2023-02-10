@@ -1,22 +1,24 @@
-
-from quickfeatures.template.template_functions import *
-from quickfeatures.gui.default_value_editor import *
+# Project
+from quickfeatures.default_value_editor import *
 from quickfeatures.__about__ import __title__
 
+# Misc
 from typing import Dict, List
 from pathlib import Path
 import json
 
-from qgis.gui import QgsMapLayerComboBox, QgsGui
+# qgis
+from qgis.gui import QgsMapLayerComboBox
 from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis, QgsMapLayerProxyModel, QgsMapLayer
 from qgis.utils import iface
 
+# PyQt
 from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QObject, pyqtSignal, pyqtSlot
-from qgis.PyQt.QtGui import QKeySequence, QColor, QCursor
-from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QComboBox, QApplication, QAction, QWidget, QLineEdit, \
-    QHBoxLayout, QVBoxLayout, QPushButton, QDialog, QLabel
+from qgis.PyQt.QtGui import QKeySequence, QColor
+from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QApplication, QAction, QDialog
 
-class Template(QObject):
+
+class FeatureTemplate(QObject):
     # Custom signal emitted when template is activated or deactivated
     beginActivation = pyqtSignal()
     activateChanged = pyqtSignal(bool)
@@ -29,8 +31,7 @@ class Template(QObject):
 
         self.name = name
 
-        QgsMessageLog.logMessage(f"Template's parent class is: {self.parent().__class__.__name__}", tag=__title__,
-                                 level=Qgis.Info)
+        # QgsMessageLog.logMessage(f"Template's parent class is: {self.parent().__class__.__name__}", tag=__title__, level=Qgis.Info)
 
         # Register shortcut
         self.shortcut = QShortcut(QKeySequence(), parent)
@@ -52,7 +53,7 @@ class Template(QObject):
 
         self.destroyed.connect(self.confirm_deletion)
 
-    def get_name(self) -> None:
+    def get_name(self) -> str:
         return self.name
 
     def set_name(self, name) -> bool:
@@ -67,12 +68,12 @@ class Template(QObject):
         self.set_active(False)
 
         if map_lyr:
-            #QgsMessageLog.logMessage(f"Loaded map layer '{map_lyr.name()}'", tag=__title__, level=Qgis.Info)
+            # QgsMessageLog.logMessage(f"Loaded map layer '{map_lyr.name()}'", tag=__title__, level=Qgis.Info)
             self.map_lyr = map_lyr
             self.map_lyr.willBeDeleted.connect(lambda value=None: self.set_map_lyr(None))
             self.set_validity(True)
         else:
-            #QgsMessageLog.logMessage(f"Removed map layer'", tag=__title__, level=Qgis.Info)
+            # QgsMessageLog.logMessage(f"Removed map layer'", tag=__title__, level=Qgis.Info)
             self.map_lyr = None
             self.set_active(False)
             self.set_validity(False)
@@ -138,13 +139,12 @@ class Template(QObject):
                 self.beginActivation.emit()
 
                 # Get values that will be reverted
-                field_names = [field_name for field_name in self.default_values]
-                self.revert_values = get_existing_default_definitions(self.map_lyr, field_names)
-                self.revert_suppress = get_existing_form_suppress(self.map_lyr)
+                self.revert_values = self.get_existing_default_definitions()
+                self.revert_suppress = self.get_existing_form_suppress()
 
                 # Set default definition and suppress form
-                set_default_definitions(self.map_lyr, self.default_values)
-                set_form_suppress(self.map_lyr, 1)
+                self.set_default_definitions(self.default_values)
+                self.set_form_suppress(1)
 
                 # Set this template as active
                 self.active = True
@@ -155,8 +155,8 @@ class Template(QObject):
                 # QgsMessageLog.logMessage(f"Deactivated template '{self.name}'", tag=__title__, level=Qgis.Info)
 
                 # Revert default value definitions and form suppression settings
-                set_default_definitions(self.map_lyr, self.revert_values)
-                set_form_suppress(self.map_lyr, self.revert_suppress)
+                self.set_default_definitions(self.revert_values)
+                self.set_form_suppress(self.revert_suppress)
 
                 # Set this template as inactive
                 self.active = False
@@ -201,9 +201,36 @@ class Template(QObject):
     def is_active(self) -> bool:
         return self.active
 
+    def set_default_definitions(self, default_values: Dict[str, QgsDefaultValue]) -> None:
 
-class TemplateTableModel(QAbstractTableModel):
+        field_ids = [get_field_id(self.map_lyr, field_name) for field_name in default_values]
+        def_values = [default_values[field_name] for field_name in default_values]
 
+        for i in range(len(default_values)):
+            self.map_lyr.setDefaultValueDefinition(field_ids[i], def_values[i])
+
+    def get_existing_default_definitions(self) -> dict:
+
+        field_names = [field_name for field_name in self.default_values]
+
+        field_ids = [get_field_id(self.map_lyr, field_name) for field_name in field_names]
+        default_values = {}
+
+        for i in range(len(field_ids)):
+            default_values[field_names[i]] = self.map_lyr.defaultValueDefinition(field_ids[i])
+
+        return default_values
+
+    def set_form_suppress(self, suppress: int) -> None:
+        edit_form = self.map_lyr.editFormConfig()
+        edit_form.setSuppress(suppress)
+        self.map_lyr.setEditFormConfig(edit_form)
+
+    def get_existing_form_suppress(self) -> int:
+        return self.map_lyr.editFormConfig().suppress()
+
+
+class FeatureTemplateTableModel(QAbstractTableModel):
     header_labels = [
         "Active",
         "Name",
@@ -212,7 +239,7 @@ class TemplateTableModel(QAbstractTableModel):
         "Layer",
     ]
 
-    def __init__(self, parent, templates: List[Template] = None):
+    def __init__(self, parent, templates: List[FeatureTemplate] = None):
         super().__init__(parent)
 
         self.templates = []
@@ -224,13 +251,13 @@ class TemplateTableModel(QAbstractTableModel):
             return self.header_labels[section]
         return super().headerData(section, orientation, role)
 
-    def rowCount(self, parent=QModelIndex()) -> int:
+    def rowCount(self, index=QModelIndex(), **kwargs) -> int:
         return len(self.templates)
 
-    def columnCount(self, parent=QModelIndex()) -> int:
+    def columnCount(self, index=QModelIndex(), **kwargs) -> int:
         return len(self.header_labels)
 
-    def data(self, index, role):
+    def data(self, index, role=Qt.DisplayRole):
 
         if not index.isValid():
             return QVariant()
@@ -244,7 +271,7 @@ class TemplateTableModel(QAbstractTableModel):
 
         template = self.templates[row]
 
-        if role == Qt.ItemDataRole.DisplayRole:
+        if role == Qt.DisplayRole:
             if column_header_label == "Name":
                 return template.get_name()
             elif column_header_label == "Default Values":
@@ -286,7 +313,6 @@ class TemplateTableModel(QAbstractTableModel):
         else:
             return Qt.ItemIsEnabled | Qt.ItemIsEditable
 
-
         # elif column_header_label == 'Layer':
         #     return Qt.ItemIsEditable | Qt.ItemIsEnabled
         # else:
@@ -324,8 +350,7 @@ class TemplateTableModel(QAbstractTableModel):
                 value = None
             return template.set_default_values(value)
 
-
-    def add_templates(self, templates: List[Template]) -> None:
+    def add_templates(self, templates: List[FeatureTemplate]) -> None:
 
         row = self.rowCount()
 
@@ -367,7 +392,7 @@ class TemplateTableModel(QAbstractTableModel):
             if not self.templates[row] == template:
                 self.templates[row].set_active(False)
 
-    def remove_template(self, template: Template) -> None:
+    def remove_template(self, template: FeatureTemplate) -> None:
         try:
             row = self.templates.index(template)
 
@@ -426,8 +451,8 @@ class TemplateTableModel(QAbstractTableModel):
                                                f"Could not find a layer named {map_lyr_name}",
                                                level=Qgis.Warning, duration=3)
 
-            template = Template(parent=self.parent(), name=d['name'], shortcut_str=d['shortcut_str'],
-                                map_lyr=map_lyr, default_values=default_values)
+            template = FeatureTemplate(parent=self.parent(), name=d['name'], shortcut_str=d['shortcut_str'],
+                                       map_lyr=map_lyr, default_values=default_values)
             templates.append(template)
 
         self.add_templates(templates)
@@ -469,8 +494,8 @@ class DefaultValueDelegate(QItemDelegate):
 
     def createEditor(self, parent, option, index):
         map_lyr = index.model().templates[index.row()].map_lyr
-        editor = DefaultValueEditor(parent, map_lyr)
-        #editor.setWindowFlags(Qt.Popup)
+        editor = DefaultValueEditor(map_lyr)
+        # editor.setWindowFlags(Qt.Popup)
         return editor
 
     def setModelData(self, editor, model, index):
@@ -481,3 +506,12 @@ class DefaultValueDelegate(QItemDelegate):
     def setEditorData(self, editor, index):
         template = index.model().templates[index.row()]
         editor.set_default_values(template.default_values)
+
+
+def get_field_id(map_lyr: QgsMapLayer, field_name: str) -> int:
+    field_idx = map_lyr.fields().indexFromName(field_name)
+
+    if field_idx == -1:
+        raise Exception(f"Could not find '{field_name}'")
+
+    return field_idx

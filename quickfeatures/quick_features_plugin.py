@@ -1,14 +1,16 @@
-# PyQGIS
+# Project
+from quickfeatures.__about__ import __title__
+from quickfeatures.quick_features_settings import QuickFeaturesOptionsFactory
+from quickfeatures.quick_features_widget import QuickFeaturesWidget
+
+# qgis
 from qgis.gui import QgisInterface
-from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QDockWidget, QMessageBox
 from qgis.utils import showPluginHelp
 
-# project
-from quickfeatures.__about__ import __title__
-from quickfeatures.gui.settings_widget import QuickFeaturesOptionsFactory
-from quickfeatures.gui.quick_features_widget import QuickFeaturesWidget
+# PyQT
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QAction, QDockWidget
 
 
 class QuickFeaturesPlugin:

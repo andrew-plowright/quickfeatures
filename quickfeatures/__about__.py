@@ -1,22 +1,10 @@
-#! python3  # noqa: E265
 
-"""
-    Metadata about the package to easily retrieve informations about it.
-    See: https://packaging.python.org/guides/single-sourcing-package-version/
-"""
-
-# ############################################################################
-# ########## Libraries #############
-# ##################################
 
 # standard library
 from configparser import ConfigParser
 from datetime import date
 from pathlib import Path
 
-# ############################################################################
-# ########## Globals ###############
-# ##################################
 __all__: list = [
     "__author__",
     "__copyright__",
@@ -28,14 +16,10 @@ __all__: list = [
     "__version__",
 ]
 
-
 DIR_PLUGIN_ROOT: Path = Path(__file__).parent
 PLG_METADATA_FILE: Path = DIR_PLUGIN_ROOT.resolve() / "metadata.txt"
 
 
-# ############################################################################
-# ########## Functions #############
-# ##################################
 def plugin_metadata_as_dict() -> dict:
     """Read plugin metadata.txt and returns it as a Python dict.
 
@@ -53,9 +37,6 @@ def plugin_metadata_as_dict() -> dict:
         raise IOError("Plugin metadata.txt not found at: %s" % PLG_METADATA_FILE)
 
 
-# ############################################################################
-# ########## Variables #############
-# ##################################
 
 # store full metadata.txt as dict into a var
 __plugin_md__: dict = plugin_metadata_as_dict()
@@ -89,9 +70,7 @@ __version_info__: tuple = tuple(
     ]
 )
 
-# #############################################################################
-# ##### Main #######################
-# ##################################
+
 if __name__ == "__main__":
     plugin_md = plugin_metadata_as_dict()
     assert isinstance(plugin_md, dict)

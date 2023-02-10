@@ -1,20 +1,3 @@
-#! python3  # noqa: E265
-
-"""
-    Plugin settings form integrated into QGIS 'Options' menu.
-"""
-
-# standard
-from functools import partial
-from pathlib import Path
-
-# PyQGIS
-from qgis.core import QgsApplication, QgsMessageLog
-from qgis.gui import QgsOptionsPageWidget, QgsOptionsWidgetFactory
-from qgis.PyQt import uic
-from qgis.PyQt.Qt import QUrl
-from qgis.PyQt.QtGui import QDesktopServices, QIcon
-
 # project
 from quickfeatures.__about__ import (
     __icon_path__,
@@ -26,9 +9,23 @@ from quickfeatures.__about__ import (
 from quickfeatures.toolbelt import PlgOptionsManager
 from quickfeatures.toolbelt.preferences import PlgSettingsStructure
 
-FORM_CLASS, _ = uic.loadUiType(Path(__file__).parent / "{}.ui".format(Path(__file__).stem))
+# Standard
+from functools import partial
+from pathlib import Path
 
-class QuickFeaturesOptionsPageWidget(FORM_CLASS, QgsOptionsPageWidget):
+# qgis
+from qgis.core import QgsApplication, QgsMessageLog
+from qgis.gui import QgsOptionsPageWidget, QgsOptionsWidgetFactory
+
+# PyQt
+from qgis.PyQt import uic
+from qgis.PyQt.Qt import QUrl
+from qgis.PyQt.QtGui import QDesktopServices, QIcon
+
+
+FORM_CLASS, _ = uic.loadUiType(Path(__file__).parent / "gui/{}.ui".format(Path(__file__).stem))
+
+class QuickFeaturesSettingsWidget(FORM_CLASS, QgsOptionsPageWidget):
     """Settings form embedded into QGIS 'options' menu."""
 
     def __init__(self, parent):
@@ -112,16 +109,16 @@ class QuickFeaturesOptionsFactory(QgsOptionsWidgetFactory):
         """        
         return QIcon(str(__icon_path__))
 
-    def createWidget(self, parent) -> QuickFeaturesOptionsPageWidget:
+    def createWidget(self, parent) -> QuickFeaturesSettingsWidget:
         """Create settings widget.
 
         :param parent: Qt parent where to include the options page.
         :type parent: QObject
 
         :return: options page for tab widget
-        :rtype: QuickFeaturesOptionsPageWidget
+        :rtype: QuickFeaturesSettingsWidget
         """        
-        return QuickFeaturesOptionsPageWidget(parent)
+        return QuickFeaturesSettingsWidget(parent)
 
     def title(self) -> str:
         """Returns plugin title, used to name the tab in QGIS options tab widget.

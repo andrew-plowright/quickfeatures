@@ -1,12 +1,18 @@
-from pathlib import Path
-from qgis.core import QgsMessageLog, QgsProject, Qgis
-from qgis.gui import QgsGui
-from qgis.PyQt import uic
-from qgis.PyQt.QtWidgets import QWidget, QAction, QTableWidgetItem, QHeaderView, QButtonGroup, QRadioButton, \
-    QFileDialog, QPushButton, QShortcut, QApplication
-from quickfeatures.template.template_classes import TemplateTableModel, QgsMapLayerComboDelegate, DefaultValueDelegate
+# Project
+from quickfeatures.feature_templates import FeatureTemplateTableModel, QgsMapLayerComboDelegate, DefaultValueDelegate
 import quickfeatures.toolbelt.preferences as plg_prefs_hdlr
 from quickfeatures.__about__ import __title__
+
+# Standard
+from pathlib import Path
+
+# qgis
+from qgis.core import QgsMessageLog, QgsProject, Qgis
+
+# PyQt
+from qgis.PyQt import uic
+from qgis.PyQt.QtWidgets import QWidget, QHeaderView, QFileDialog, QPushButton
+
 
 class QuickFeaturesWidget(QWidget):
 
@@ -14,10 +20,12 @@ class QuickFeaturesWidget(QWidget):
         super().__init__(parent)
 
         # Load UI file
-        uic.loadUi(Path(__file__).parent / "{}.ui".format(Path(__file__).stem), self)
+        uic.loadUi(Path(__file__).parent / "gui/{}.ui".format(Path(__file__).stem), self)
 
         # Initialize table
         self.table_model = None
+        self.table_map_lyr_delegate = None
+        self.default_value_delegate = None
         self.init_table()
 
         # Connect buttons
@@ -30,7 +38,7 @@ class QuickFeaturesWidget(QWidget):
     def init_table(self):
 
         # Set table's model
-        self.table_model = TemplateTableModel(parent=self, templates=None)
+        self.table_model = FeatureTemplateTableModel(parent=self, templates=None)
         self.table_model.rowsInserted.connect(self.rows_inserted)
 
         # Connect model to view
@@ -58,7 +66,6 @@ class QuickFeaturesWidget(QWidget):
         for row in range(first, last + 1):
             self.table_view.openPersistentEditor(self.table_model.index(row, 4))
 
-
     def load_data(self):
 
         file_name = QFileDialog.getOpenFileName(self, 'Open file', 'c:\\', "JSON file (*.json)")[0]
@@ -69,7 +76,6 @@ class QuickFeaturesWidget(QWidget):
     def clean_up(self):
         self.table_model.clear_templates()
 
-
     def debug_button(self):
 
         debug_mode = plg_prefs_hdlr.PlgOptionsManager.get_plg_settings().debug_mode
@@ -77,7 +83,6 @@ class QuickFeaturesWidget(QWidget):
         QgsMessageLog.logMessage(f"Found DEBUG mode and it was '{debug_mode}'", tag=__title__, level=Qgis.Info)
 
         if debug_mode:
-
             self.load_test_data_debug = QPushButton("Load Test Data", self)
             self.debug_button = QPushButton("Debug", self)
             self.debug_button_layout.addWidget(self.load_test_data_debug)
@@ -96,8 +101,4 @@ class QuickFeaturesWidget(QWidget):
 
         QgsMessageLog.logMessage(f"My class is: {self.__class__.__name__}", tag=__title__, level=Qgis.Info)
 
-        #existing_shortcuts = self.findChildren(QShortcut) + QgsGui.shortcutsManager().listShortcuts()
-
-
-
-
+        # existing_shortcuts = self.findChildren(QShortcut) + QgsGui.shortcutsManager().listShortcuts()
