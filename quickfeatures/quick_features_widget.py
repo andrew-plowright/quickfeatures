@@ -80,7 +80,7 @@ class QuickFeaturesWidget(QWidget):
 
         debug_mode = plg_prefs_hdlr.PlgOptionsManager.get_plg_settings().debug_mode
 
-        QgsMessageLog.logMessage(f"Found DEBUG mode and it was '{debug_mode}'", tag=__title__, level=Qgis.Info)
+        # QgsMessageLog.logMessage(f"Found DEBUG mode and it was '{debug_mode}'", tag=__title__, level=Qgis.Info)
 
         if debug_mode:
             self.load_test_data_debug = QPushButton("Load Test Data", self)

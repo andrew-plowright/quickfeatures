@@ -9,7 +9,7 @@ from qgis.core import QgsMapLayer, QgsMessageLog, Qgis, QgsDefaultValue
 from qgis.gui import QgsSpinBox, QgsDoubleSpinBox, QgsDateTimeEdit, QgsDateEdit
 
 # PyQt
-from qgis.PyQt.QtCore import Qt, QSize, QModelIndex, QVariant, QAbstractTableModel, QDate
+from qgis.PyQt.QtCore import Qt, QSize, QModelIndex, QVariant, QAbstractTableModel, QDate, QDateTime
 from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QComboBox, QApplication, QAction, QWidget, QLineEdit, \
     QHBoxLayout, QVBoxLayout, QPushButton, QDialog, QLabel, QTableWidgetItem, QCheckBox, QHeaderView
 
@@ -17,16 +17,17 @@ from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QComboBox, QApplicatio
 class DefaultValueOption():
 
     def __init__(self, name: str, data_type: str):
-        self.value = QgsDefaultValue()
+        self.value = None
         self.selected = False
         self.valid = True
         self.name = name
         self.type = data_type
 
     def set_value(self, value):
-        QgsMessageLog.logMessage(f"Default value changed from {self.value.expression()} to {value}", tag=__title__,
-                                 level=Qgis.Info)
-        self.value.setExpression(value)
+        self.value = value
+
+    def get_value(self):
+        return self.value
 
     def get_name(self) -> str:
         return self.name
@@ -62,7 +63,7 @@ class DefaultValueOptionModel(QAbstractTableModel):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.default_values = []
+        self.default_values_options = []
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
@@ -70,7 +71,7 @@ class DefaultValueOptionModel(QAbstractTableModel):
         return super().headerData(section, orientation, role)
 
     def rowCount(self, index=QModelIndex(), **kwargs) -> int:
-        return len(self.default_values)
+        return len(self.default_values_options)
 
     def columnCount(self, index=QModelIndex(), **kwargs) -> int:
         return len(self.header_labels)
@@ -81,7 +82,7 @@ class DefaultValueOptionModel(QAbstractTableModel):
             return QVariant()
 
         row = index.row()
-        default_val = self.default_values[row]
+        default_val = self.default_values_options[row]
 
         column = index.column()
         column_header_label = self.header_labels[column]
@@ -97,17 +98,6 @@ class DefaultValueOptionModel(QAbstractTableModel):
             if column_header_label == "Field":
                 return default_val.get_name()
 
-        # if role == Qt.BackgroundRole:
-        #     if template.is_active():
-        #         return QColor(220, 255, 220)
-        #
-        # if role == Qt.ForegroundRole:
-        #     if not template.is_valid():
-        #         return QColor(200, 200, 200)
-        #
-        #     if column_header_label == "Shortcut":
-        #         if template.shortcut.key().toString() == "":
-        #             return QColor(200, 200, 200)
 
     def flags(self, index):
 
@@ -115,7 +105,7 @@ class DefaultValueOptionModel(QAbstractTableModel):
             return Qt.NoItemFlags
 
         row = index.column()
-        default_val = self.default_values[row]
+        default_val = self.default_values_options[row]
 
         col = index.column()
         column_header_label = self.header_labels[col]
@@ -141,17 +131,17 @@ class DefaultValueOptionModel(QAbstractTableModel):
             return False
 
         row = index.row()
-        default_val = self.default_values[row]
+        default_value_option = self.default_values_options[row]
 
         col = index.column()
         column_header_label = self.header_labels[col]
 
         if column_header_label == 'Select' and role == Qt.CheckStateRole:
-            default_val.toggle_selected()
+            default_value_option.toggle_selected()
             return True
 
         if column_header_label == 'Value' and role == Qt.EditRole:
-            default_val.set_value(value)
+            default_value_option.set_value(value)
             return True
 
     def add_fields(self, map_lyr: QgsMapLayer) -> None:
@@ -165,35 +155,46 @@ class DefaultValueOptionModel(QAbstractTableModel):
         for field in fields:
             default_val = DefaultValueOption(name=field.name(), data_type=field.typeName())
 
-            self.default_values.append(default_val)
+            self.default_values_options.append(default_val)
 
         self.endInsertRows()
 
-    def get_selected_default_values(self):
-        return 'SOME STUFF'
+    def get_selected_default_values(self) -> Dict:
+        out_values = {}
+        for default_values_options in self.default_values_options:
+            if default_values_options.is_selected():
+                key = default_values_options.get_name()
+                value = default_values_options.get_value()
+                out_values[key] = value
 
-    def set_selected_default_values(self, set_default_values: Dict[str, QgsDefaultValue]):
+        return out_values
+
+    def set_selected_default_values(self, set_default_values: Dict):
 
         for field_name in set_default_values:
 
-            QgsMessageLog.logMessage(f"Looking for field name: {field_name}", tag=__title__,
-                                     level=Qgis.Info)
+            # Check if this field name exists
+            default_value_option = None
+            row = None
+            for i in range(len(self.default_values_options)):
+                if self.default_values_options[i].get_name() == field_name:
+                    default_value_option = self.default_values_options[i]
+                    row = i
 
-            set_default_val = None
-            for default_val in self.default_values:
-                if default_val.get_name() == field_name:
-                    set_default_val = default_val
+            # Set its value and set it as 'selected'
+            if default_value_option:
 
-            if set_default_val:
-                set_default_val.set_selected(True)
+                # QgsMessageLog.logMessage(f"set_selected_default_values: [{default_value_option.get_name()}] to [{set_default_values[field_name].expression()}]",
+                #                          tag=__title__,
+                #                          level=Qgis.Info)
 
-                QgsMessageLog.logMessage(f"Setting default field name: {set_default_val.get_name()}", tag=__title__,
-                                         level=Qgis.Info)
+                default_value_option.set_selected(True)
+                default_value_option.set_value(set_default_values[field_name])
 
-        # index1 = self.createIndex(0, 0)
-        # index2 = self.createIndex(self.rowCount(), self.columnCount())
-        # self.dataChanged.emit(index1, index2)
+                index1 = self.createIndex(row, 0)
+                index2 = self.createIndex(row, self.columnCount())
 
+                self.dataChanged.emit(index1, index2)
 
 class DefaultValueOptionDelegate(QItemDelegate):
 
@@ -202,7 +203,7 @@ class DefaultValueOptionDelegate(QItemDelegate):
 
     def createEditor(self, parent, option, index):
 
-        default_val = index.model().default_values[index.row()]
+        default_val = index.model().default_values_options[index.row()]
 
         field_type = default_val.get_type()
 
@@ -230,9 +231,9 @@ class DefaultValueOptionDelegate(QItemDelegate):
 
     def setModelData(self, editor, model, index):
 
-        default_val = index.model().default_values[index.row()]
+        default_value_option = index.model().default_values_options[index.row()]
 
-        field_type = default_val.get_type()
+        field_type = default_value_option.get_type()
 
         data = None
 
@@ -260,18 +261,49 @@ class DefaultValueOptionDelegate(QItemDelegate):
         if data == "":
             data = None
 
-        # Convert data to a string
-        if data is not None:
-            data = f"'{data}'"
+        # QgsMessageLog.logMessage(
+        #     f"\nValue [{data}]\n  - Type: [{type(data).__name__}]\n  - None: [{data == None}]",
+        #     tag=__title__, level=Qgis.Info)
+
 
         model.setData(index, data)
 
-        ...
-        # if editor.result() == QDialog.Accepted:
-        #     data = editor.get_default_values()
-        #     model.setData(index, data)
 
     def setEditorData(self, editor, index):
-        date = QDate.fromString('2013-09-16', 'yyyy-MM-dd')
-        # template = index.model().templates[index.row()]
-        # editor.set_default_values(template.default_values)
+
+        default_value_option = index.model().default_values_options[index.row()]
+
+        field_type = default_value_option.get_type()
+        value = default_value_option.get_value()
+
+        # QgsMessageLog.logMessage(f"\nsetEditorData"
+        #                          f"\n  Field   : [{default_value_option.get_name()}]"
+        #                          f"\n  Checked : [{default_value_option.is_selected()}]"
+        #                          f"\n  Current : [{default_value_option.get_value()}] "
+        #                          f"\n  New val : [{value}]",
+        #                          tag=__title__, level=Qgis.Info)
+
+        if not value == '' and value is not None:
+
+            if field_type == 'Integer64' or field_type == 'Integer':
+                editor.setValue(value)
+
+            elif field_type == 'String' or field_type == 'JSON':
+
+                editor.setText(value)
+
+            elif field_type == 'Real':
+                editor.setValue(value)
+
+            elif field_type == 'Date':
+                date = QDate.fromString(value, 'yyyy-MM-dd')
+                editor.setDate(date)
+
+            elif field_type == 'DateTime':
+                date_time = QDateTime.fromString(value, 'yyyy-MM-dd hh:mm:ss')
+                editor.setDateTime(date_time)
+
+            elif field_type == 'Boolean':
+                editor.setChecked(value)
+            else:
+                ...

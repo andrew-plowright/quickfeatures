@@ -25,7 +25,7 @@ class FeatureTemplate(QObject):
     validChanged = pyqtSignal(bool)
 
     def __init__(self, parent, name: str, shortcut_str: str, map_lyr: QgsMapLayer,
-                 default_values: Dict[str, QgsDefaultValue]):
+                 default_values: Dict):
 
         super().__init__(parent)
 
@@ -38,11 +38,6 @@ class FeatureTemplate(QObject):
         self.shortcut.activated.connect(self.toggle)
         self.set_shortcut(shortcut_str)
 
-        # Store default values and 'dialog suppression' setting for when template is deactivated
-        self.default_values = default_values
-        self.revert_suppress = 0
-        self.revert_values = {}
-
         # Switches
         self.active = False
         self.valid = False
@@ -50,6 +45,12 @@ class FeatureTemplate(QObject):
         # Set map layer
         self.map_lyr = None
         self.set_map_lyr(map_lyr)
+
+        # Store default values and 'dialog suppression' setting for when template is deactivated
+        self.default_values = {}
+        self.revert_suppress = 0
+        self.revert_values = {}
+        self.set_default_values(default_values)
 
         self.destroyed.connect(self.confirm_deletion)
 
@@ -105,12 +106,49 @@ class FeatureTemplate(QObject):
         self.setParent(None)
         self.deleteLater()
 
-    def get_default_values_str(self) -> str:
-        vals = self.default_values
-        return ', '.join([key + ': ' + vals[key].expression() for key in vals])
+    def get_default_values(self) -> Dict:
 
-    def set_default_values(self, values) -> bool:
+        # Strip away single quotes
+        out_dict = {}
+        for key, value in self.default_values.items():
+            out = value.expression()
+            if out.lower() == 'true':
+                out = True
+            elif out.lower() == 'false':
+                out = False
+            elif out.lstrip('-').isdigit():
+                out = int(out)
+            elif is_float(out):
+                out = float(out)
+            else:
+                out = out.strip("\'")
+            out_dict[key] = out
+
+        return out_dict
+
+    def set_default_values(self, values: Dict) -> bool:
+
         QgsMessageLog.logMessage(f"Default values set: {values}", tag=__title__, level=Qgis.Info)
+
+        default_values = {}
+        for key, value in values.items():
+
+            if isinstance(value, str):
+                value = f"'{value}'"
+            else:
+                value = str(value)
+            default_values[key] = QgsDefaultValue(value)
+
+        self.default_values = default_values
+
+        if self.is_active():
+
+            # Be sure to FIRST revert to 'revert values'
+            self.set_lyr_default_definitions(self.revert_values)
+
+            # Now reset the default values
+            self.revert_values = self.get_lyr_default_definitions()
+            self.set_lyr_default_definitions(self.default_values)
 
         # TO DO HERE
         # Check that all default values:
@@ -139,12 +177,12 @@ class FeatureTemplate(QObject):
                 self.beginActivation.emit()
 
                 # Get values that will be reverted
-                self.revert_values = self.get_existing_default_definitions()
-                self.revert_suppress = self.get_existing_form_suppress()
+                self.revert_values = self.get_lyr_default_definitions()
+                self.revert_suppress = self.get_lyr_form_suppress()
 
                 # Set default definition and suppress form
-                self.set_default_definitions(self.default_values)
-                self.set_form_suppress(1)
+                self.set_lyr_default_definitions(self.default_values)
+                self.set_lyr_form_suppress(1)
 
                 # Set this template as active
                 self.active = True
@@ -155,8 +193,8 @@ class FeatureTemplate(QObject):
                 # QgsMessageLog.logMessage(f"Deactivated template '{self.name}'", tag=__title__, level=Qgis.Info)
 
                 # Revert default value definitions and form suppression settings
-                self.set_default_definitions(self.revert_values)
-                self.set_form_suppress(self.revert_suppress)
+                self.set_lyr_default_definitions(self.revert_values)
+                self.set_lyr_form_suppress(self.revert_suppress)
 
                 # Set this template as inactive
                 self.active = False
@@ -201,7 +239,7 @@ class FeatureTemplate(QObject):
     def is_active(self) -> bool:
         return self.active
 
-    def set_default_definitions(self, default_values: Dict[str, QgsDefaultValue]) -> None:
+    def set_lyr_default_definitions(self, default_values: Dict[str, QgsDefaultValue]) -> None:
 
         field_ids = [get_field_id(self.map_lyr, field_name) for field_name in default_values]
         def_values = [default_values[field_name] for field_name in default_values]
@@ -209,7 +247,7 @@ class FeatureTemplate(QObject):
         for i in range(len(default_values)):
             self.map_lyr.setDefaultValueDefinition(field_ids[i], def_values[i])
 
-    def get_existing_default_definitions(self) -> dict:
+    def get_lyr_default_definitions(self) -> dict:
 
         field_names = [field_name for field_name in self.default_values]
 
@@ -221,12 +259,12 @@ class FeatureTemplate(QObject):
 
         return default_values
 
-    def set_form_suppress(self, suppress: int) -> None:
+    def set_lyr_form_suppress(self, suppress: int) -> None:
         edit_form = self.map_lyr.editFormConfig()
         edit_form.setSuppress(suppress)
         self.map_lyr.setEditFormConfig(edit_form)
 
-    def get_existing_form_suppress(self) -> int:
+    def get_lyr_form_suppress(self) -> int:
         return self.map_lyr.editFormConfig().suppress()
 
 
@@ -275,7 +313,9 @@ class FeatureTemplateTableModel(QAbstractTableModel):
             if column_header_label == "Name":
                 return template.get_name()
             elif column_header_label == "Default Values":
-                return template.get_default_values_str()
+                def_val_str = ', '.join([key + ': ' + str(value) for key, value in template.get_default_values().items()])
+                return def_val_str
+
             elif column_header_label == "Shortcut":
                 return template.get_shortcut_str()
 
@@ -434,8 +474,6 @@ class FeatureTemplateTableModel(QAbstractTableModel):
 
         for d in data:
 
-            default_values = {key: QgsDefaultValue(f"'{value}'") for key, value in d['default_values'].items()}
-
             map_lyr_name = d['map_lyr_name']
             map_lyrs = QgsProject().instance().mapLayersByName(map_lyr_name)
 
@@ -452,7 +490,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
                                                level=Qgis.Warning, duration=3)
 
             template = FeatureTemplate(parent=self.parent(), name=d['name'], shortcut_str=d['shortcut_str'],
-                                       map_lyr=map_lyr, default_values=default_values)
+                                       map_lyr=map_lyr, default_values=d['default_values'])
             templates.append(template)
 
         self.add_templates(templates)
@@ -493,8 +531,8 @@ class DefaultValueDelegate(QItemDelegate):
         super().__init__(parent)
 
     def createEditor(self, parent, option, index):
-        map_lyr = index.model().templates[index.row()].map_lyr
-        editor = DefaultValueEditor(map_lyr)
+        template = index.model().templates[index.row()].map_lyr
+        editor = DefaultValueEditor(template)
         # editor.setWindowFlags(Qt.Popup)
         return editor
 
@@ -505,7 +543,7 @@ class DefaultValueDelegate(QItemDelegate):
 
     def setEditorData(self, editor, index):
         template = index.model().templates[index.row()]
-        editor.set_default_values(template.default_values)
+        editor.set_default_values(template.get_default_values())
 
 
 def get_field_id(map_lyr: QgsMapLayer, field_name: str) -> int:
@@ -515,3 +553,13 @@ def get_field_id(map_lyr: QgsMapLayer, field_name: str) -> int:
         raise Exception(f"Could not find '{field_name}'")
 
     return field_idx
+
+def is_float(element: any) -> bool:
+    #If you expect None to be passed:
+    if element is None:
+        return False
+    try:
+        float(element)
+        return True
+    except ValueError:
+        return False

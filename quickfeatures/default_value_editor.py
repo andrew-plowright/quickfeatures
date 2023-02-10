@@ -8,14 +8,12 @@ from typing import Dict, List
 
 # qgis
 from qgis.core import QgsMapLayer, QgsMessageLog, Qgis, QgsDefaultValue
-from qgis.gui import QgsSpinBox, QgsDoubleSpinBox, QgsDateTimeEdit, QgsDateEdit
 
 # PyQt
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import Qt, QSize, QModelIndex, QVariant, QAbstractTableModel, QDate
-from qgis.PyQt.QtGui import QCursor, QColor, QValidator
-from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QComboBox, QApplication, QAction, QWidget, QLineEdit, \
-    QHBoxLayout, QVBoxLayout, QPushButton, QDialog, QLabel, QTableWidgetItem, QCheckBox, QHeaderView
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QCursor
+from qgis.PyQt.QtWidgets import QDialog, QHeaderView
 
 
 class DefaultValueEditor(QDialog):
@@ -31,6 +29,7 @@ class DefaultValueEditor(QDialog):
 
         # Add field names
         self.table_model = None
+        self.default_value_option_delegate = None
         self.init_table(map_lyr)
 
         self.accept_button.clicked.connect(self.accept)
@@ -43,9 +42,6 @@ class DefaultValueEditor(QDialog):
         geom.moveCenter(QCursor.pos())
         self.setGeometry(geom)
         super().showEvent(event)
-
-    # def _on_editingFinished(self):
-    #     self.editingFinished.emit()
 
     def get_default_values(self) -> Dict[str, QgsDefaultValue]:
         return self.table_model.get_selected_default_values()
@@ -62,8 +58,8 @@ class DefaultValueEditor(QDialog):
         self.table_view.setModel(self.table_model)
 
         # Set delegates
-        self.table_map_value_delegate = DefaultValueOptionDelegate(self.table_view)
-        self.table_view.setItemDelegateForColumn(2, self.table_map_value_delegate)
+        self.default_value_option_delegate = DefaultValueOptionDelegate(self.table_view)
+        self.table_view.setItemDelegateForColumn(2, self.default_value_option_delegate)
 
         # Populate model
         self.table_model.add_fields(map_lyr)
@@ -75,7 +71,6 @@ class DefaultValueEditor(QDialog):
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
 
     def rows_inserted(self, parent, first, last):
-        QgsMessageLog.logMessage(f"Rows inserted", tag=__title__, level=Qgis.Info)
 
         for row in range(first, last + 1):
             self.table_view.openPersistentEditor(self.table_model.index(row, 2))
