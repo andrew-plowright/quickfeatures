@@ -9,7 +9,7 @@ import json
 
 # qgis
 from qgis.gui import QgsMapLayerComboBox
-from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis, QgsMapLayerProxyModel, QgsMapLayer
+from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis, QgsMapLayerProxyModel, QgsMapLayer, QgsVectorLayer
 from qgis.utils import iface
 
 # PyQt
@@ -24,7 +24,7 @@ class FeatureTemplate(QObject):
     activateChanged = pyqtSignal(bool)
     validChanged = pyqtSignal(bool)
 
-    def __init__(self, parent, widget, name: str, shortcut_str: str, map_lyr: QgsMapLayer,
+    def __init__(self, parent, widget, name: str, shortcut_str: str, map_lyr: QgsVectorLayer,
                  default_values: Dict):
 
         super().__init__(parent)
@@ -549,7 +549,7 @@ class DefaultValueDelegate(QItemDelegate):
         editor.set_default_values(template.get_default_values())
 
 
-def get_field_id(map_lyr: QgsMapLayer, field_name: str) -> int:
+def get_field_id(map_lyr: QgsVectorLayer, field_name: str) -> int:
     field_idx = map_lyr.fields().indexFromName(field_name)
 
     if field_idx == -1:

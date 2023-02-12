@@ -6,7 +6,7 @@ from typing import Dict, List
 import sys
 
 # qgis
-from qgis.core import QgsMapLayer, QgsMessageLog, Qgis, QgsDefaultValue
+from qgis.core import QgsMapLayer, QgsMessageLog, Qgis, QgsDefaultValue, QgsVectorLayer
 from qgis.gui import QgsSpinBox, QgsDoubleSpinBox, QgsDateTimeEdit, QgsDateEdit
 
 # PyQt
@@ -145,7 +145,7 @@ class DefaultValueOptionModel(QAbstractTableModel):
             default_value_option.set_value(value)
             return True
 
-    def add_fields(self, map_lyr: QgsMapLayer) -> None:
+    def add_fields(self, map_lyr: QgsVectorLayer) -> None:
 
         row = self.rowCount()
 
@@ -207,6 +207,7 @@ class DefaultValueOptionDelegate(QStyledItemDelegate):
     #     self.parent().openPersistentEditor(index)
     #     super().paint(painter, option, index)
 
+
     def createEditor(self, parent, option, index):
 
         default_val = index.model().default_values_options[index.row()]
@@ -215,14 +216,18 @@ class DefaultValueOptionDelegate(QStyledItemDelegate):
 
         if field_type == 'Integer64' or field_type == 'Integer':
             editor = QSpinBox(parent)
+            editor.setMaximum(2147483647)
             editor.setMinimum(-2147483648)
+
 
         elif field_type == 'String' or field_type == 'JSON':
             editor = QLineEdit(parent)
 
         elif field_type == 'Real':
             editor = QDoubleSpinBox(parent)
+            editor.setMaximum(float('inf'))
             editor.setMinimum(float('-inf'))
+            editor.setDecimals(7)
 
         elif field_type == 'Date':
             editor = QgsDateEdit(parent)

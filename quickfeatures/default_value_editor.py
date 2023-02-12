@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Dict, List
 
 # qgis
-from qgis.core import QgsMapLayer, QgsMessageLog, Qgis, QgsDefaultValue
+from qgis.core import QgsMapLayer, QgsMessageLog, Qgis, QgsDefaultValue, QgsVectorLayer
 
 # PyQt
 from qgis.PyQt import uic
@@ -18,7 +18,7 @@ from qgis.PyQt.QtWidgets import QDialog, QHeaderView
 
 class DefaultValueEditor(QDialog):
 
-    def __init__(self,  map_lyr: QgsMapLayer):
+    def __init__(self,  map_lyr: QgsVectorLayer):
         super().__init__()
 
         # Load UI file
