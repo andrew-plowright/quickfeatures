@@ -15,7 +15,7 @@ from qgis.utils import iface
 # PyQt
 from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QObject, pyqtSignal, pyqtSlot
 from qgis.PyQt.QtGui import QKeySequence, QColor
-from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QApplication, QAction, QDialog
+from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QStyledItemDelegate, QApplication, QAction, QDialog, QTableWidgetItem, QTableWidget
 
 
 class FeatureTemplate(QObject):
@@ -319,6 +319,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
                 return template.get_name()
             elif column_header_label == "Default Values":
                 def_val_str = ', '.join([key + ': ' + str(value) for key, value in template.get_default_values().items()])
+
                 return def_val_str
 
             elif column_header_label == "Shortcut":
@@ -409,6 +410,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
 
         self.endInsertRows()
 
+
     @pyqtSlot()
     def refresh_template(self) -> None:
 
@@ -495,10 +497,14 @@ class FeatureTemplateTableModel(QAbstractTableModel):
         self.add_templates(templates)
 
 
-class QgsMapLayerComboDelegate(QItemDelegate):
+class QgsMapLayerComboDelegate(QStyledItemDelegate):
 
     def __init__(self, parent):
         super().__init__(parent)
+
+    def paint(self, painter, option, index):
+        self.parent().openPersistentEditor(index)
+        super().paint(painter, option, index)
 
     def createEditor(self, parent, option, index):
         editor = QgsMapLayerComboBox(parent)

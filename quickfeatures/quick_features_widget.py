@@ -39,7 +39,6 @@ class QuickFeaturesWidget(QWidget):
 
         # Set table's model
         self.table_model = FeatureTemplateTableModel(parent=self, templates=None)
-        self.table_model.rowsInserted.connect(self.rows_inserted)
 
         # Connect model to view
         self.table_view.setModel(self.table_model)
@@ -61,17 +60,14 @@ class QuickFeaturesWidget(QWidget):
         for col_num in [0, 1, 2]:
             header.setSectionResizeMode(col_num, QHeaderView.ResizeMode.ResizeToContents)
 
-    def rows_inserted(self, parent, first, last):
-
-        for row in range(first, last + 1):
-            self.table_view.openPersistentEditor(self.table_model.index(row, 4))
-
     def load_data(self):
 
         file_name = QFileDialog.getOpenFileName(self, 'Open file', 'c:\\', "JSON file (*.json)")[0]
 
         if file_name != '':
             self.table_model.from_json(Path(file_name))
+
+        self.table_view.resizeColumnToContents(1)
 
     def clean_up(self):
         self.table_model.clear_templates()
@@ -95,6 +91,7 @@ class QuickFeaturesWidget(QWidget):
 
         test_data_path = QgsProject.instance().readPath("./") + '/template_group.json'
         self.table_model.from_json(Path(test_data_path))
+        self.table_view.resizeColumnToContents(1)
 
     def debug_function(self):
         QgsMessageLog.logMessage(f"Debug message", tag=__title__, level=Qgis.Info)

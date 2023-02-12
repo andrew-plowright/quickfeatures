@@ -3,6 +3,7 @@ from quickfeatures.__about__ import __title__
 
 # Misc
 from typing import Dict, List
+import sys
 
 # qgis
 from qgis.core import QgsMapLayer, QgsMessageLog, Qgis, QgsDefaultValue
@@ -10,8 +11,8 @@ from qgis.gui import QgsSpinBox, QgsDoubleSpinBox, QgsDateTimeEdit, QgsDateEdit
 
 # PyQt
 from qgis.PyQt.QtCore import Qt, QSize, QModelIndex, QVariant, QAbstractTableModel, QDate, QDateTime
-from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QComboBox, QApplication, QAction, QWidget, QLineEdit, \
-    QHBoxLayout, QVBoxLayout, QPushButton, QDialog, QLabel, QTableWidgetItem, QCheckBox, QHeaderView
+from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QStyledItemDelegate, QComboBox, QApplication, QAction, QWidget, QLineEdit, \
+    QHBoxLayout, QVBoxLayout, QPushButton, QDialog, QLabel, QTableWidgetItem, QCheckBox, QHeaderView, QSpinBox, QDoubleSpinBox
 
 
 class DefaultValueOption():
@@ -197,10 +198,14 @@ class DefaultValueOptionModel(QAbstractTableModel):
 
                 self.dataChanged.emit(index1, index2)
 
-class DefaultValueOptionDelegate(QItemDelegate):
+class DefaultValueOptionDelegate(QStyledItemDelegate):
 
     def __init__(self, parent):
         super().__init__(parent)
+
+    # def paint(self, painter, option, index):
+    #     self.parent().openPersistentEditor(index)
+    #     super().paint(painter, option, index)
 
     def createEditor(self, parent, option, index):
 
@@ -209,13 +214,15 @@ class DefaultValueOptionDelegate(QItemDelegate):
         field_type = default_val.get_type()
 
         if field_type == 'Integer64' or field_type == 'Integer':
-            editor = QgsSpinBox(parent)
+            editor = QSpinBox(parent)
+            editor.setMinimum(-2147483648)
 
         elif field_type == 'String' or field_type == 'JSON':
             editor = QLineEdit(parent)
 
         elif field_type == 'Real':
-            editor = QgsDoubleSpinBox(parent)
+            editor = QDoubleSpinBox(parent)
+            editor.setMinimum(float('-inf'))
 
         elif field_type == 'Date':
             editor = QgsDateEdit(parent)
@@ -292,6 +299,7 @@ class DefaultValueOptionDelegate(QItemDelegate):
             elif field_type == 'String' or field_type == 'JSON':
 
                 editor.setText(value)
+                editor.deselect()
 
             elif field_type == 'Real':
                 editor.setValue(value)
