@@ -104,7 +104,7 @@ class DefaultValueOptionModel(QAbstractTableModel):
         if not index.isValid():
             return Qt.NoItemFlags
 
-        row = index.column()
+        row = index.row()
         default_val = self.default_values_options[row]
 
         col = index.column()
@@ -148,16 +148,17 @@ class DefaultValueOptionModel(QAbstractTableModel):
 
         row = self.rowCount()
 
-        fields = map_lyr.fields().toList()
+        if map_lyr:
+            fields = map_lyr.fields().toList()
 
-        self.beginInsertRows(QModelIndex(), row, row + len(fields) - 1)
+            self.beginInsertRows(QModelIndex(), row, row + len(fields) - 1)
 
-        for field in fields:
-            default_val = DefaultValueOption(name=field.name(), data_type=field.typeName())
+            for field in fields:
+                default_val = DefaultValueOption(name=field.name(), data_type=field.typeName())
 
-            self.default_values_options.append(default_val)
+                self.default_values_options.append(default_val)
 
-        self.endInsertRows()
+            self.endInsertRows()
 
     def get_selected_default_values(self) -> Dict:
         out_values = {}

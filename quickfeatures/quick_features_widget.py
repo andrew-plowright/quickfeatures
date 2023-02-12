@@ -99,6 +99,7 @@ class QuickFeaturesWidget(QWidget):
     def debug_function(self):
         QgsMessageLog.logMessage(f"Debug message", tag=__title__, level=Qgis.Info)
 
-        QgsMessageLog.logMessage(f"My class is: {self.__class__.__name__}", tag=__title__, level=Qgis.Info)
+        #QgsMessageLog.logMessage(f"My class is: {self.__class__.__name__}", tag=__title__, level=Qgis.Info)
+        QgsMessageLog.logMessage(f"My palette is: {type(self.palette()).__name__}", tag=__title__, level=Qgis.Info)
 
         # existing_shortcuts = self.findChildren(QShortcut) + QgsGui.shortcutsManager().listShortcuts()

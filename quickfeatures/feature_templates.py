@@ -19,12 +19,12 @@ from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QApplication, QAction,
 
 
 class FeatureTemplate(QObject):
-    # Custom signal emitted when template is activated or deactivated
+
     beginActivation = pyqtSignal()
     activateChanged = pyqtSignal(bool)
     validChanged = pyqtSignal(bool)
 
-    def __init__(self, parent, name: str, shortcut_str: str, map_lyr: QgsMapLayer,
+    def __init__(self, parent, widget, name: str, shortcut_str: str, map_lyr: QgsMapLayer,
                  default_values: Dict):
 
         super().__init__(parent)
@@ -34,22 +34,19 @@ class FeatureTemplate(QObject):
         # QgsMessageLog.logMessage(f"Template's parent class is: {self.parent().__class__.__name__}", tag=__title__, level=Qgis.Info)
 
         # Register shortcut
-        self.shortcut = QShortcut(QKeySequence(), parent)
-        self.shortcut.activated.connect(self.toggle)
+        self.shortcut = QShortcut(QKeySequence(), widget)
+        self.shortcut.activated.connect(self.toggle_active)
         self.set_shortcut(shortcut_str)
 
-        # Switches
         self.active = False
         self.valid = False
 
-        # Set map layer
         self.map_lyr = None
-        self.set_map_lyr(map_lyr)
-
-        # Store default values and 'dialog suppression' setting for when template is deactivated
         self.default_values = {}
         self.revert_suppress = 0
         self.revert_values = {}
+
+        self.set_map_lyr(map_lyr)
         self.set_default_values(default_values)
 
         self.destroyed.connect(self.confirm_deletion)
@@ -72,18 +69,45 @@ class FeatureTemplate(QObject):
             # QgsMessageLog.logMessage(f"Loaded map layer '{map_lyr.name()}'", tag=__title__, level=Qgis.Info)
             self.map_lyr = map_lyr
             self.map_lyr.willBeDeleted.connect(lambda value=None: self.set_map_lyr(None))
-            self.set_validity(True)
+            self.map_lyr.attributeAdded.connect(self.check_validity)
+            self.map_lyr.attributeDeleted.connect(self.check_validity)
         else:
             # QgsMessageLog.logMessage(f"Removed map layer'", tag=__title__, level=Qgis.Info)
             self.map_lyr = None
-            self.set_active(False)
-            self.set_validity(False)
+
+        self.check_validity()
 
     def map_lyr_name(self) -> str:
         if self.map_lyr:
             return self.map_lyr.name()
         else:
             return 'None'
+
+    def is_valid(self) -> bool:
+        return self.valid
+
+    def check_validity(self) -> bool:
+        valid = True
+        if self.map_lyr is None:
+            QgsMessageLog.logMessage(f"Feature template '{self.get_name()}' invalid: no Map layer",
+                                     tag=__title__, level=Qgis.Warning)
+            valid = False
+        else:
+
+            # Check if all default value names exist within map layer
+            map_field_names = [field.name() for field in self.map_lyr.fields().toList()]
+            default_value_field_names = [key for key in self.default_values]
+            all_names_valid = all([item in map_field_names for item in default_value_field_names])
+
+            if not all_names_valid:
+                QgsMessageLog.logMessage(f"Feature template '{self.get_name()}' invalid: "
+                                         f"did not have correct attribute fields",
+                                         tag=__title__, level=Qgis.Warning)
+                valid = False
+
+        self.set_validity(valid)
+
+        return valid
 
     def set_validity(self, value):
         if value:
@@ -95,75 +119,10 @@ class FeatureTemplate(QObject):
                 self.valid = False
                 self.validChanged.emit(False)
 
-    @staticmethod
-    def confirm_deletion(self):
-        ...
-        # QgsMessageLog.logMessage(f"Confirm deletion!", tag=__title__, level=Qgis.Info)
+    def is_active(self) -> bool:
+        return self.active
 
-    def delete_template(self):
-        self.set_active(False)
-        self.delete_shortcut()
-        self.setParent(None)
-        self.deleteLater()
-
-    def get_default_values(self) -> Dict:
-
-        # Strip away single quotes
-        out_dict = {}
-        for key, value in self.default_values.items():
-            out = value.expression()
-            if out.lower() == 'true':
-                out = True
-            elif out.lower() == 'false':
-                out = False
-            elif out.lstrip('-').isdigit():
-                out = int(out)
-            elif is_float(out):
-                out = float(out)
-            else:
-                out = out.strip("\'")
-            out_dict[key] = out
-
-        return out_dict
-
-    def set_default_values(self, values: Dict) -> bool:
-
-        QgsMessageLog.logMessage(f"Default values set: {values}", tag=__title__, level=Qgis.Info)
-
-        default_values = {}
-        for key, value in values.items():
-
-            if isinstance(value, str):
-                value = f"'{value}'"
-            else:
-                value = str(value)
-            default_values[key] = QgsDefaultValue(value)
-
-        self.default_values = default_values
-
-        if self.is_active():
-
-            # Be sure to FIRST revert to 'revert values'
-            self.set_lyr_default_definitions(self.revert_values)
-
-            # Now reset the default values
-            self.revert_values = self.get_lyr_default_definitions()
-            self.set_lyr_default_definitions(self.default_values)
-
-        # TO DO HERE
-        # Check that all default values:
-        #   - Are valid
-        #   - Correspond to fields within the layer
-        # If not...
-        #   - Make invalid
-        #   - Deactivate
-        # If they ARE
-        #   - Make sure that set_default_definitions gets fired again
-        # Also
-        #   - Use this function in __init__ so that invalid default values are caught
-        return True
-
-    def toggle(self):
+    def toggle_active(self):
 
         self.set_active(not self.is_active())
 
@@ -233,11 +192,46 @@ class FeatureTemplate(QObject):
             str = 'None'
         return str
 
-    def is_valid(self) -> bool:
-        return self.valid
+    def get_default_values(self) -> Dict:
 
-    def is_active(self) -> bool:
-        return self.active
+        # Strip away single quotes
+        out_dict = {}
+        for key, value in self.default_values.items():
+            out = value.expression()
+            if out.lower() == 'true':
+                out = True
+            elif out.lower() == 'false':
+                out = False
+            elif out.lstrip('-').isdigit():
+                out = int(out)
+            elif is_float(out):
+                out = float(out)
+            else:
+                out = out.strip("\'")
+            out_dict[key] = out
+
+        return out_dict
+
+    def set_default_values(self, values: Dict) -> bool:
+
+        #QgsMessageLog.logMessage(f"Default values set: {values}", tag=__title__, level=Qgis.Info)
+
+        self.set_active(False)
+
+        default_values = {}
+        for key, value in values.items():
+
+            if isinstance(value, str):
+                value = f"'{value}'"
+            else:
+                value = str(value)
+            default_values[key] = QgsDefaultValue(value)
+
+        self.default_values = default_values
+
+        self.check_validity()
+
+        return True
 
     def set_lyr_default_definitions(self, default_values: Dict[str, QgsDefaultValue]) -> None:
 
@@ -267,6 +261,16 @@ class FeatureTemplate(QObject):
     def get_lyr_form_suppress(self) -> int:
         return self.map_lyr.editFormConfig().suppress()
 
+    @staticmethod
+    def confirm_deletion(self):
+        QgsMessageLog.logMessage(f"Confirm deletion!", tag=__title__, level=Qgis.Info)
+
+    def delete_template(self):
+        self.set_active(False)
+        self.delete_shortcut()
+        self.setParent(None)
+        self.deleteLater()
+
 
 class FeatureTemplateTableModel(QAbstractTableModel):
     header_labels = [
@@ -281,6 +285,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
         super().__init__(parent)
 
         self.templates = []
+        self.highlight_brush = parent.palette().highlight()
         if templates is not None:
             self.templates = templates
 
@@ -328,7 +333,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
 
         if role == Qt.BackgroundRole:
             if template.is_active():
-                return QColor(220, 255, 220)
+                return self.highlight_brush
 
         if role == Qt.ForegroundRole:
             if not template.is_valid():
@@ -348,8 +353,6 @@ class FeatureTemplateTableModel(QAbstractTableModel):
 
         if column_header_label == 'Active':
             return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
-        if column_header_label == 'Default Values' and not template.is_valid():
-            return Qt.ItemIsEnabled
         else:
             return Qt.ItemIsEnabled | Qt.ItemIsEditable
 
@@ -367,7 +370,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
         template = self.templates[index.row()]
 
         if column_header_label == 'Active' and role == Qt.CheckStateRole:
-            template.toggle()
+            template.toggle_active()
             return True
 
         if column_header_label == 'Layer' and role == Qt.EditRole:
@@ -481,15 +484,11 @@ class FeatureTemplateTableModel(QAbstractTableModel):
             if len(map_lyrs) == 1:
                 map_lyr = map_lyrs[0]
             elif len(map_lyrs) > 1:
-                iface.messageBar().pushMessage("Multiple layers",
-                                               f"Found multiple layers named {map_lyr_name}",
-                                               level=Qgis.Warning, duration=3)
+                QgsMessageLog.logMessage(f"Multiple layers named {map_lyr_name}", tag=__title__, level=Qgis.Warning)
             else:
-                iface.messageBar().pushMessage("Layer not found",
-                                               f"Could not find a layer named {map_lyr_name}",
-                                               level=Qgis.Warning, duration=3)
+                QgsMessageLog.logMessage(f"Could not find a layer named {map_lyr_name}", tag=__title__, level=Qgis.Warning)
 
-            template = FeatureTemplate(parent=self.parent(), name=d['name'], shortcut_str=d['shortcut_str'],
+            template = FeatureTemplate(parent=self, widget=self.parent(),name=d['name'], shortcut_str=d['shortcut_str'],
                                        map_lyr=map_lyr, default_values=d['default_values'])
             templates.append(template)
 
@@ -520,8 +519,6 @@ class QgsMapLayerComboDelegate(QItemDelegate):
     def layerSelected(self):
         # This function simply closes the editor when a layer is selected so
         # that the model data is changed immediately
-
-        # self.commitData.emit(self.sender())
         self.closeEditor.emit(self.sender())
 
 
@@ -555,7 +552,7 @@ def get_field_id(map_lyr: QgsMapLayer, field_name: str) -> int:
     return field_idx
 
 def is_float(element: any) -> bool:
-    #If you expect None to be passed:
+
     if element is None:
         return False
     try:
