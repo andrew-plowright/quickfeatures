@@ -1,5 +1,6 @@
 # Project
-from quickfeatures.feature_templates import FeatureTemplateTableModel, QgsMapLayerComboDelegate, DefaultValueDelegate
+from quickfeatures.feature_templates import FeatureTemplateTableModel, QgsMapLayerComboDelegate, DefaultValueDelegate, \
+    RemoveDelegate
 from quickfeatures.__about__ import __title__
 
 # Standard
@@ -69,21 +70,27 @@ class QuickFeaturesWidget(QWidget):
         # Connect model to view
         self.table_view.setModel(self.table_model)
 
-        # Set delegate for map layer column
-        map_lyr_col = 4
-        self.table_map_lyr_delegate = QgsMapLayerComboDelegate(self.table_view)
-        self.table_view.setItemDelegateForColumn(map_lyr_col, self.table_map_lyr_delegate)
-
         # Set delegate for default values column
         default_value_col = 3
         self.default_value_delegate = DefaultValueDelegate(self.table_view)
         self.table_view.setItemDelegateForColumn(default_value_col, self.default_value_delegate)
 
+        # Set delegate for map layer column
+        map_lyr_col = 4
+        self.table_map_lyr_delegate = QgsMapLayerComboDelegate(self.table_view)
+        self.table_view.setItemDelegateForColumn(map_lyr_col, self.table_map_lyr_delegate)
+
+        # Set delegate for map layer column
+        remove_col = 5
+        delete_icon = QIcon(os.path.join(self.icon_dir, 'mActionDeleteSelected.svg'))
+        self.remove_delegate = RemoveDelegate(self.table_view, delete_icon)
+        self.table_view.setItemDelegateForColumn(remove_col, self.remove_delegate)
+
         # Set column sizes
         header = self.table_view.horizontalHeader()
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         self.table_view.setColumnWidth(4, 150)
-        for col_num in [0, 1, 2]:
+        for col_num in [0, 1, 2, 5]:
             header.setSectionResizeMode(col_num, QHeaderView.ResizeMode.ResizeToContents)
 
     def load_data(self):

@@ -13,9 +13,10 @@ from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis, QgsMapLa
 from qgis.utils import iface
 
 # PyQt
-from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QObject, pyqtSignal, pyqtSlot
+from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QSize, QObject, pyqtSignal, pyqtSlot
 from qgis.PyQt.QtGui import QKeySequence, QColor
-from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QStyledItemDelegate, QApplication, QAction, QDialog, QTableWidgetItem, QTableWidget
+from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QStyledItemDelegate, QApplication, QAction, QDialog, \
+    QTableWidgetItem, QTableWidget, QPushButton
 
 
 class FeatureTemplate(QObject):
@@ -263,7 +264,8 @@ class FeatureTemplate(QObject):
 
     @staticmethod
     def confirm_deletion(self):
-        QgsMessageLog.logMessage(f"Confirm deletion!", tag=__title__, level=Qgis.Info)
+        ...
+        #QgsMessageLog.logMessage(f"Confirm deletion!", tag=__title__, level=Qgis.Info)
 
     def delete_template(self):
         self.set_active(False)
@@ -279,6 +281,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
         "Shortcut",
         "Default Values",
         "Layer",
+        "Remove",
     ]
 
     def __init__(self, parent, templates: List[FeatureTemplate] = None):
@@ -291,7 +294,11 @@ class FeatureTemplateTableModel(QAbstractTableModel):
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            return self.header_labels[section]
+            header_name = self.header_labels[section]
+            if header_name is 'Remove' or header_name is 'Active':
+                return None
+            else:
+                return header_name
         return super().headerData(section, orientation, role)
 
     def rowCount(self, index=QModelIndex(), **kwargs) -> int:
@@ -315,11 +322,12 @@ class FeatureTemplateTableModel(QAbstractTableModel):
         template = self.templates[row]
 
         if role == Qt.DisplayRole:
+
             if column_header_label == "Name":
                 return template.get_name()
-            elif column_header_label == "Default Values":
-                def_val_str = ', '.join([key + ': ' + str(value) for key, value in template.get_default_values().items()])
 
+            elif column_header_label == "Default Values":
+                def_val_str = '\n'.join([f'{key}: {str(value)}' for key, value in template.get_default_values().items()])
                 return def_val_str
 
             elif column_header_label == "Shortcut":
@@ -547,6 +555,34 @@ class DefaultValueDelegate(QItemDelegate):
     def setEditorData(self, editor, index):
         template = index.model().templates[index.row()]
         editor.set_default_values(template.get_default_values())
+
+
+class RemoveDelegate(QItemDelegate):
+
+    def __init__(self, parent, delete_icon):
+        super().__init__(parent)
+        self.delete_icon = delete_icon
+
+    def createEditor(self, parent, option, index):
+        model = index.model()
+        template = model.templates[index.row()]
+        editor = QPushButton(parent)
+        editor.setIcon(self.delete_icon)
+        editor.setIconSize(QSize(20,20))
+        editor.clicked.connect(lambda: model.remove_template(template))
+        # editor.setWindowFlags(Qt.Popup)
+        return editor
+
+    def paint(self, painter, option, index):
+        self.parent().openPersistentEditor(index)
+        super().paint(painter, option, index)
+
+    def setModelData(self, editor, model, index):
+        model.setData(index, True)
+    #
+    # def setEditorData(self, editor, index):
+    #     template = index.model().templates[index.row()]
+    #     editor.set_default_values(template.get_default_values())
 
 
 def get_field_id(map_lyr: QgsVectorLayer, field_name: str) -> int:
