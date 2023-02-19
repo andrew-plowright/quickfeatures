@@ -1,23 +1,27 @@
 # Project
 from quickfeatures.feature_templates import FeatureTemplateTableModel, QgsMapLayerComboDelegate, DefaultValueDelegate
-import quickfeatures.toolbelt.preferences as plg_prefs_hdlr
 from quickfeatures.__about__ import __title__
 
 # Standard
 from pathlib import Path
+import os
 
 # qgis
-from qgis.core import QgsMessageLog, QgsProject, Qgis
+from qgis.core import QgsMessageLog, QgsProject, Qgis, QgsApplication
 
 # PyQt
 from qgis.PyQt import uic
-from qgis.PyQt.QtWidgets import QWidget, QHeaderView, QFileDialog, QPushButton
+from qgis.PyQt.QtCore import QSize
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QWidget, QHeaderView, QFileDialog, QPushButton, QToolBar, QAction
 
 
 class QuickFeaturesWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        self.icon_dir = os.path.join(os.path.dirname(__file__), "resources/icons")
 
         # Load UI file
         uic.loadUi(Path(__file__).parent / "gui/{}.ui".format(Path(__file__).stem), self)
@@ -28,12 +32,34 @@ class QuickFeaturesWidget(QWidget):
         self.default_value_delegate = None
         self.init_table()
 
-        # Connect buttons
-        self.load_data_button.clicked.connect(self.load_data)
-        self.clear_templates_button.clicked.connect(self.table_model.clear_templates)
+        # Actions
+        self.action_add_template = QAction(QIcon(os.path.join(self.icon_dir, 'mActionAdd.svg')), "Add template", self)
+        self.action_add_template.setStatusTip("Add templates")
+        #self.action_add_template.triggered.connect()
+
+        self.action_clear_templates = QAction(QIcon(os.path.join(self.icon_dir, 'iconClearConsole.svg')), "Clear templates", self)
+        self.action_clear_templates.setStatusTip("Clear templates")
+        self.action_clear_templates.triggered.connect(self.table_model.clear_templates)
+
+        self.action_load_templates = QAction(QIcon(os.path.join(self.icon_dir, 'mActionFileOpen.svg')), "Load templates", self)
+        self.action_load_templates.setStatusTip("Load templates")
+        self.action_load_templates.triggered.connect(self.load_data)
+
+        self.action_save_templates = QAction(QIcon(os.path.join(self.icon_dir, 'mActionFileSave.svg')), "Save templates", self)
+        self.action_save_templates.setStatusTip("Save templates")
+        #self.action_save_templates.triggered.connect(self.table_model.clear_templates)
+
+        # Toolbar
+        self.toolbar = QToolBar()
+        self.toolbar_layout.addWidget(self.toolbar)
+        self.toolbar.addAction(self.action_add_template)
+        self.toolbar.addAction(self.action_clear_templates)
+        self.toolbar.addAction(self.action_load_templates)
+        self.toolbar.addAction(self.action_save_templates)
+        self.toolbar.setIconSize(QSize(18,18))
 
         # Button used for debugging purpose
-        self.debug_button()
+        self.add_debug_actions()
 
     def init_table(self):
 
@@ -72,28 +98,32 @@ class QuickFeaturesWidget(QWidget):
     def clean_up(self):
         self.table_model.clear_templates()
 
-    def debug_button(self):
+    def add_debug_actions(self):
 
-        debug_mode = plg_prefs_hdlr.PlgOptionsManager.get_plg_settings().debug_mode
-
+        debug_mode = True
         # QgsMessageLog.logMessage(f"Found DEBUG mode and it was '{debug_mode}'", tag=__title__, level=Qgis.Info)
 
         if debug_mode:
-            self.load_test_data_debug = QPushButton("Load Test Data", self)
-            self.debug_button = QPushButton("Debug", self)
-            self.debug_button_layout.addWidget(self.load_test_data_debug)
-            self.debug_button_layout.addWidget(self.debug_button)
 
-            self.load_test_data_debug.clicked.connect(self.debug_load_test_data)
-            self.debug_button.clicked.connect(self.debug_function)
+            self.action_testdata = QAction(QIcon(QgsApplication.iconPath("mIconFolderOpen.svg")),
+                                                 "Load Test Data", self)
+            self.action_debug = QAction(QIcon(QgsApplication.iconPath("mIndicatorBadLayer.svg")),
+                                                 "Debug", self)
 
-    def debug_load_test_data(self):
+            self.action_testdata.triggered.connect(self.testdata)
+            self.action_debug.triggered.connect(self.debug)
+
+            self.toolbar.addAction(self.action_testdata)
+            self.toolbar.addAction(self.action_debug)
+
+
+    def testdata(self):
 
         test_data_path = QgsProject.instance().readPath("./") + '/template_group.json'
         self.table_model.from_json(Path(test_data_path))
         self.table_view.resizeColumnToContents(1)
 
-    def debug_function(self):
+    def debug(self):
         QgsMessageLog.logMessage(f"Debug message", tag=__title__, level=Qgis.Info)
 
         #QgsMessageLog.logMessage(f"My class is: {self.__class__.__name__}", tag=__title__, level=Qgis.Info)
