@@ -418,7 +418,6 @@ class FeatureTemplateTableModel(QAbstractTableModel):
 
         self.endInsertRows()
 
-
     @pyqtSlot()
     def refresh_template(self) -> None:
 

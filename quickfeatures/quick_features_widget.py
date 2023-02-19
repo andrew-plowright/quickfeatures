@@ -1,6 +1,6 @@
 # Project
 from quickfeatures.feature_templates import FeatureTemplateTableModel, QgsMapLayerComboDelegate, DefaultValueDelegate, \
-    RemoveDelegate
+    RemoveDelegate, FeatureTemplate
 from quickfeatures.__about__ import __title__
 
 # Standard
@@ -36,7 +36,7 @@ class QuickFeaturesWidget(QWidget):
         # Actions
         self.action_add_template = QAction(QIcon(os.path.join(self.icon_dir, 'mActionAdd.svg')), "Add template", self)
         self.action_add_template.setStatusTip("Add templates")
-        #self.action_add_template.triggered.connect()
+        self.action_add_template.triggered.connect(self.add_template_dialog)
 
         self.action_clear_templates = QAction(QIcon(os.path.join(self.icon_dir, 'iconClearConsole.svg')), "Clear templates", self)
         self.action_clear_templates.setStatusTip("Clear templates")
@@ -44,7 +44,7 @@ class QuickFeaturesWidget(QWidget):
 
         self.action_load_templates = QAction(QIcon(os.path.join(self.icon_dir, 'mActionFileOpen.svg')), "Load templates", self)
         self.action_load_templates.setStatusTip("Load templates")
-        self.action_load_templates.triggered.connect(self.load_data)
+        self.action_load_templates.triggered.connect(self.load_data_dialog)
 
         self.action_save_templates = QAction(QIcon(os.path.join(self.icon_dir, 'mActionFileSave.svg')), "Save templates", self)
         self.action_save_templates.setStatusTip("Save templates")
@@ -93,7 +93,7 @@ class QuickFeaturesWidget(QWidget):
         for col_num in [0, 1, 2, 5]:
             header.setSectionResizeMode(col_num, QHeaderView.ResizeMode.ResizeToContents)
 
-    def load_data(self):
+    def load_data_dialog(self):
 
         file_name = QFileDialog.getOpenFileName(self, 'Open file', 'c:\\', "JSON file (*.json)")[0]
 
@@ -101,6 +101,17 @@ class QuickFeaturesWidget(QWidget):
             self.table_model.from_json(Path(file_name))
 
         self.table_view.resizeColumnToContents(1)
+
+    def add_template_dialog(self):
+
+        ...
+
+        # template_name = 'Complete this'
+        #
+        # template = FeatureTemplate(parent=self.table_model, widget=self, name=template_name, shortcut_str=None,
+        #                     map_lyr=None, default_values={})
+        #
+        # self.table_model.add_templates([template])
 
     def clean_up(self):
         self.table_model.clear_templates()
