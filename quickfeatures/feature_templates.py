@@ -17,7 +17,7 @@ from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QSi
 from qgis.PyQt.QtGui import QKeySequence, QColor
 from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QStyledItemDelegate, QApplication, QAction, QDialog, \
     QTableWidgetItem, QTableWidget, QPushButton
-
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
 
 class FeatureTemplate(QObject):
 
@@ -77,6 +77,9 @@ class FeatureTemplate(QObject):
             self.map_lyr = None
 
         self.check_validity()
+
+    def get_map_lyr(self) -> QgsVectorLayer:
+        return self.map_lyr
 
     def map_lyr_name(self) -> str:
         if self.map_lyr:
@@ -261,6 +264,30 @@ class FeatureTemplate(QObject):
 
     def get_lyr_form_suppress(self) -> int:
         return self.map_lyr.editFormConfig().suppress()
+
+    def prevent_save(self, elem: QDomElement):
+
+        if self.is_active():
+
+            #QgsMessageLog.logMessage(f"Preventing template {self.get_name()} from being saved", tag=__title__, level=Qgis.Info)
+
+            defaults = elem.namedItem('defaults').childNodes()
+
+            revert_values = self.revert_values
+            revert_suppress = self.revert_suppress
+
+            for i in range(defaults.length()):
+                default = defaults.item(i)
+                field = default.attributes().namedItem('field').nodeValue()
+                for field_name in revert_values:
+                    if field == field_name:
+                        revert_expression = revert_values[field_name].expression()
+                        expression_node = default.attributes().namedItem('expression')
+                        expression_node.setNodeValue(revert_expression)
+                        #QgsMessageLog.logMessage(f"Field {field} setting expression: {revert_expression}", tag=__title__, level=Qgis.Info)
+
+            featformsuppress = elem.namedItem('featformsuppress').namedItem("#text")
+            featformsuppress.setNodeValue(str(revert_suppress))
 
     @staticmethod
     def confirm_deletion(self):
@@ -475,6 +502,9 @@ class FeatureTemplateTableModel(QAbstractTableModel):
         for tp in self.templates:
             print({f"Template: '{tp.get_name()}', Active: {str(tp.is_active())}"})
 
+    def get_templates(self):
+        return self.templates
+
     def from_json(self, path: Path):
 
         with open(path) as f:
@@ -484,10 +514,12 @@ class FeatureTemplateTableModel(QAbstractTableModel):
 
         templates = []
 
+        qgsproject = QgsProject().instance()
+
         for d in data:
 
             map_lyr_name = d['map_lyr_name']
-            map_lyrs = QgsProject().instance().mapLayersByName(map_lyr_name)
+            map_lyrs = qgsproject.mapLayersByName(map_lyr_name)
 
             map_lyr = None
             if len(map_lyrs) == 1:
@@ -499,10 +531,10 @@ class FeatureTemplateTableModel(QAbstractTableModel):
 
             template = FeatureTemplate(parent=self, widget=self.parent(),name=d['name'], shortcut_str=d['shortcut_str'],
                                        map_lyr=map_lyr, default_values=d['default_values'])
+
             templates.append(template)
 
         self.add_templates(templates)
-
 
 class QgsMapLayerComboDelegate(QStyledItemDelegate):
 

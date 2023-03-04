@@ -15,7 +15,7 @@ from qgis.PyQt import uic
 from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QWidget, QHeaderView, QFileDialog, QPushButton, QToolBar, QAction
-
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
 
 class QuickFeaturesWidget(QWidget):
 
@@ -70,6 +70,8 @@ class QuickFeaturesWidget(QWidget):
         # Set table's model
         self.table_model = FeatureTemplateTableModel(parent=self, templates=None)
 
+        QgsProject.instance().writeMapLayer.connect(self.prevent_template_save)
+
         # Connect model to view
         self.table_view.setModel(self.table_model)
 
@@ -95,6 +97,14 @@ class QuickFeaturesWidget(QWidget):
         self.table_view.setColumnWidth(4, 150)
         for col_num in [0, 1, 2, 5]:
             header.setSectionResizeMode(col_num, QHeaderView.ResizeMode.ResizeToContents)
+
+    def prevent_template_save(self, map_lyr: QgsMapLayer, elem: QDomElement, doc: QDomDocument):
+
+        templates = self.table_model.get_templates()
+
+        for template in templates:
+            if template.get_map_lyr() == map_lyr:
+                template.prevent_save(elem)
 
     def load_data_dialog(self):
 
