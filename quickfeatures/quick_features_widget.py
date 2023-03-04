@@ -8,7 +8,7 @@ from pathlib import Path
 import os
 
 # qgis
-from qgis.core import QgsMessageLog, QgsProject, Qgis, QgsApplication
+from qgis.core import QgsMessageLog, QgsProject, Qgis, QgsApplication, QgsSettings, QgsMapLayer
 
 # PyQt
 from qgis.PyQt import uic
@@ -26,6 +26,9 @@ class QuickFeaturesWidget(QWidget):
 
         # Load UI file
         uic.loadUi(Path(__file__).parent / "gui/{}.ui".format(Path(__file__).stem), self)
+
+        # Deactivate 'Reuse last value' setting
+        QgsSettings().setValue('qgis/digitizing/reuseLastValues', False)
 
         # Initialize table
         self.table_model = None
