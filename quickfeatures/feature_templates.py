@@ -50,6 +50,7 @@ class FeatureTemplate(QObject):
         self.set_map_lyr(map_lyr)
         self.set_default_values(default_values)
 
+        QgsProject.instance().writeMapLayer.connect(self.prevent_save)
         self.destroyed.connect(self.confirm_deletion)
 
     def get_name(self) -> str:
@@ -265,29 +266,33 @@ class FeatureTemplate(QObject):
     def get_lyr_form_suppress(self) -> int:
         return self.map_lyr.editFormConfig().suppress()
 
-    def prevent_save(self, elem: QDomElement):
+    # This method is called when the 'writeMapLayer' signal is emitted
+    # The 'elem' QDomElement contains the layer information that will be saved to file
+    # This method is needed to prevent the default values that are activated by the
+    # template to be saved to file.
+    def prevent_save(self, map_lyr: QgsMapLayer, elem: QDomElement, doc: QDomDocument):
 
-        if self.is_active():
+        if self.is_active() and self.get_map_lyr() == map_lyr:
 
             #QgsMessageLog.logMessage(f"Preventing template {self.get_name()} from being saved", tag=__title__, level=Qgis.Info)
 
-            defaults = elem.namedItem('defaults').childNodes()
+            defaults_nodes = elem.namedItem('defaults').childNodes()
 
             revert_values = self.revert_values
             revert_suppress = self.revert_suppress
 
-            for i in range(defaults.length()):
-                default = defaults.item(i)
-                field = default.attributes().namedItem('field').nodeValue()
+            for i in range(defaults_nodes.length()):
+                default_node = defaults_nodes.item(i)
+                field_value = default_node.attributes().namedItem('field').nodeValue()
                 for field_name in revert_values:
-                    if field == field_name:
+                    if field_value == field_name:
                         revert_expression = revert_values[field_name].expression()
-                        expression_node = default.attributes().namedItem('expression')
+                        expression_node = default_node.attributes().namedItem('expression')
                         expression_node.setNodeValue(revert_expression)
                         #QgsMessageLog.logMessage(f"Field {field} setting expression: {revert_expression}", tag=__title__, level=Qgis.Info)
 
-            featformsuppress = elem.namedItem('featformsuppress').namedItem("#text")
-            featformsuppress.setNodeValue(str(revert_suppress))
+            featformsuppress_node = elem.namedItem('featformsuppress').namedItem("#text")
+            featformsuppress_node.setNodeValue(str(revert_suppress))
 
     @staticmethod
     def confirm_deletion(self):
