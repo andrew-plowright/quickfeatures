@@ -1,6 +1,6 @@
 # Project
-from quickfeatures.feature_templates import FeatureTemplateTableModel, QgsMapLayerComboDelegate, DefaultValueDelegate, \
-    RemoveDelegate, FeatureTemplate
+from quickfeatures.feature_template_table_model import FeatureTemplateTableModel, QgsMapLayerComboDelegate, DefaultValueDelegate, \
+    RemoveDelegate
 from quickfeatures.__about__ import __title__
 
 # Standard
@@ -62,6 +62,10 @@ class QuickFeaturesWidget(QWidget):
         self.toolbar.addAction(self.action_save_templates)
         self.toolbar.setIconSize(QSize(18,18))
 
+        # On project load/save
+        QgsProject.instance().readProject.connect(self.project_load)
+        QgsProject.instance().writeProject.connect(self.project_save)
+
         # Button used for debugging purpose
         self.add_debug_actions()
 
@@ -116,6 +120,36 @@ class QuickFeaturesWidget(QWidget):
         #                     map_lyr=None, default_values={})
         #
         # self.table_model.add_templates([template])
+
+    def project_load(self, doc: QDomDocument):
+    
+        root = doc.childNodes().item(0)
+        
+        plugin_elem = root.namedItem('quick_features')
+        
+        if not plugin_elem.isNull():
+                    
+            feature_templates_elem = plugin_elem.namedItem('feature_templates')
+        
+            self.table_model.from_xml(feature_templates_elem)
+
+
+    def project_save(self, doc: QDomDocument):
+
+        templates = self.table_model.get_templates()
+        
+        if len(templates) > 0:
+        
+            root = doc.childNodes().item(0)
+            plugin_elem = doc.createElement('quick_features')
+            templates_elem = doc.createElement('feature_templates')
+            
+            for template in templates:
+                template_xml = template.to_xml(doc)
+                templates_elem.appendChild(template_xml)
+
+            plugin_elem.appendChild(templates_elem)
+            root.appendChild(plugin_elem)
 
     def clean_up(self):
         self.table_model.clear_templates()

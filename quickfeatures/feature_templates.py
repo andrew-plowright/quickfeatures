@@ -70,14 +70,21 @@ class FeatureTemplate(QObject):
         if map_lyr:
             # QgsMessageLog.logMessage(f"Loaded map layer '{map_lyr.name()}'", tag=__title__, level=Qgis.Info)
             self.map_lyr = map_lyr
-            self.map_lyr.willBeDeleted.connect(lambda value=None: self.set_map_lyr(None))
+            self.map_lyr.willBeDeleted.connect(self.remove_map_lyr)
             self.map_lyr.attributeAdded.connect(self.check_validity)
             self.map_lyr.attributeDeleted.connect(self.check_validity)
         else:
             # QgsMessageLog.logMessage(f"Removed map layer'", tag=__title__, level=Qgis.Info)
-            self.map_lyr = None
+            if self.map_lyr is not None:
+                self.map_lyr.willBeDeleted.disconnect(self.remove_map_lyr)
+                self.map_lyr.attributeAdded.disconnect(self.check_validity)
+                self.map_lyr.attributeDeleted.disconnect(self.check_validity)
+                self.map_lyr = None
 
         self.check_validity()
+
+    def remove_map_lyr(self):
+        self.set_map_lyr(None)
 
     def get_map_lyr(self) -> QgsVectorLayer:
         return self.map_lyr
@@ -94,8 +101,7 @@ class FeatureTemplate(QObject):
     def check_validity(self) -> bool:
         valid = True
         if self.map_lyr is None:
-            QgsMessageLog.logMessage(f"Feature template '{self.get_name()}' invalid: no Map layer",
-                                     tag=__title__, level=Qgis.Warning)
+            #QgsMessageLog.logMessage(f"Feature template '{self.get_name()}' invalid: no Map layer", tag=__title__, level=Qgis.Warning)
             valid = False
         else:
 
@@ -105,9 +111,7 @@ class FeatureTemplate(QObject):
             all_names_valid = all([item in map_field_names for item in default_value_field_names])
 
             if not all_names_valid:
-                QgsMessageLog.logMessage(f"Feature template '{self.get_name()}' invalid: "
-                                         f"did not have correct attribute fields",
-                                         tag=__title__, level=Qgis.Warning)
+                #QgsMessageLog.logMessage(f"Feature template '{self.get_name()}' invalid: did not have correct attribute fields", tag=__title__, level=Qgis.Warning)
                 valid = False
 
         self.set_validity(valid)
@@ -294,6 +298,36 @@ class FeatureTemplate(QObject):
             featformsuppress_node = elem.namedItem('featformsuppress').namedItem("#text")
             featformsuppress_node.setNodeValue(str(revert_suppress))
 
+    def to_xml(self, doc: QDomDocument) -> QDomElement:
+    
+        template_elem = doc.createElement('template')
+        
+        template_elem.setAttribute('name', self.get_name())
+        template_elem.setAttribute('map_lyr', self.map_lyr_name())
+        template_elem.setAttribute('shortcut', self.get_shortcut_str())
+
+        default_values_elem = doc.createElement('default_values')
+        
+        for key, value in self.get_default_values().items():
+                    
+            default_value = doc.createElement('default_value')
+            
+            if isinstance(value, bool):
+                if value:
+                    value = 'true'
+                else:
+                    value = 'false'
+            
+            default_value.setAttribute('field', key)
+            default_value.setAttribute('value', str(value))
+            
+            default_values_elem.appendChild(default_value)
+            
+        template_elem.appendChild(default_values_elem)
+        
+        return template_elem
+        
+
     @staticmethod
     def confirm_deletion(self):
         ...
@@ -304,322 +338,6 @@ class FeatureTemplate(QObject):
         self.delete_shortcut()
         self.setParent(None)
         self.deleteLater()
-
-
-class FeatureTemplateTableModel(QAbstractTableModel):
-    header_labels = [
-        "Active",
-        "Name",
-        "Shortcut",
-        "Default Values",
-        "Layer",
-        "Remove",
-    ]
-
-    def __init__(self, parent, templates: List[FeatureTemplate] = None):
-        super().__init__(parent)
-
-        self.templates = []
-        self.highlight_brush = parent.palette().highlight()
-        if templates is not None:
-            self.templates = templates
-
-    def headerData(self, section, orientation, role=Qt.DisplayRole):
-        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            header_name = self.header_labels[section]
-            if header_name is 'Remove' or header_name is 'Active':
-                return None
-            else:
-                return header_name
-        return super().headerData(section, orientation, role)
-
-    def rowCount(self, index=QModelIndex(), **kwargs) -> int:
-        return len(self.templates)
-
-    def columnCount(self, index=QModelIndex(), **kwargs) -> int:
-        return len(self.header_labels)
-
-    def data(self, index, role=Qt.DisplayRole):
-
-        if not index.isValid():
-            return QVariant()
-
-        row = index.row()
-        column = index.column()
-        column_header_label = self.header_labels[column]
-
-        if row >= len(self.templates):
-            return QVariant()
-
-        template = self.templates[row]
-
-        if role == Qt.DisplayRole:
-
-            if column_header_label == "Name":
-                return template.get_name()
-
-            elif column_header_label == "Default Values":
-                def_val_str = '\n'.join([f'{key}: {str(value)}' for key, value in template.get_default_values().items()])
-                return def_val_str
-
-            elif column_header_label == "Shortcut":
-                return template.get_shortcut_str()
-
-        if role == Qt.CheckStateRole:
-            if column_header_label == "Active":
-                if template.is_active():
-                    return Qt.Checked
-                else:
-                    return Qt.Unchecked
-
-        if role == Qt.BackgroundRole:
-            if template.is_active():
-                return self.highlight_brush
-
-        if role == Qt.ForegroundRole:
-            if not template.is_valid():
-                return QColor(180, 180, 180)
-
-            if column_header_label == "Shortcut":
-                if template.shortcut.key().toString() == "":
-                    return QColor(180, 180, 180)
-
-    def flags(self, index):
-
-        if not index.isValid():
-            return Qt.NoItemFlags
-
-        column_header_label = self.header_labels[index.column()]
-        template = self.templates[index.row()]
-
-        if column_header_label == 'Active':
-            return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
-        else:
-            return Qt.ItemIsEnabled | Qt.ItemIsEditable
-
-        # elif column_header_label == 'Layer':
-        #     return Qt.ItemIsEditable | Qt.ItemIsEnabled
-        # else:
-        #     return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
-
-    def setData(self, index, value, role=Qt.EditRole):
-
-        if not index.isValid():
-            return False
-
-        column_header_label = self.header_labels[index.column()]
-        template = self.templates[index.row()]
-
-        if column_header_label == 'Active' and role == Qt.CheckStateRole:
-            template.toggle_active()
-            return True
-
-        if column_header_label == 'Layer' and role == Qt.EditRole:
-            template.set_map_lyr(value)
-            self.dataChanged.emit(index, index)
-            return True
-
-        if column_header_label == 'Shortcut':
-            if value == "":
-                value = None
-            return template.set_shortcut(value)
-
-        if column_header_label == 'Name':
-            if value == "":
-                value = None
-            return template.set_name(value)
-
-        if column_header_label == 'Default Values':
-            if value == "":
-                value = None
-            return template.set_default_values(value)
-
-    def add_templates(self, templates: List[FeatureTemplate]) -> None:
-
-        row = self.rowCount()
-
-        self.beginInsertRows(QModelIndex(), row, row + len(templates) - 1)
-
-        for template in templates:
-            self.templates.append(template)
-
-            template.beginActivation.connect(self.deactivate_other_templates)
-
-            template.activateChanged.connect(self.refresh_template)
-            template.validChanged.connect(self.refresh_template)
-
-        self.endInsertRows()
-
-    @pyqtSlot()
-    def refresh_template(self) -> None:
-
-        # QgsMessageLog.logMessage(f"Loaded map layer '{self.sender()}'", tag=__title__, level=Qgis.Info)
-
-        row = self.templates.index(self.sender())
-
-        index1 = self.createIndex(row, 0)
-        index2 = self.createIndex(row, self.columnCount())
-
-        self.dataChanged.emit(index1, index2)
-
-        # col = self.header_labels.index('Active')
-        # index_start = self.createIndex(0, col)
-        # index_end = self.createIndex(self.rowCount() - 1, col)
-        # self.dataChanged.emit(index_start, index_end)
-
-    @pyqtSlot()
-    def deactivate_other_templates(self) -> None:
-
-        template = self.sender()
-
-        for row in range(len(self.templates)):
-            if not self.templates[row] == template:
-                self.templates[row].set_active(False)
-
-    def remove_template(self, template: FeatureTemplate) -> None:
-        try:
-            row = self.templates.index(template)
-
-            self.beginRemoveRows(QModelIndex(), row, row)
-
-            template.delete_template()
-
-            self.templates.remove(template)
-
-            self.endRemoveRows()
-
-        except ValueError:
-            print(f'Template not found')
-
-    def clear_templates(self):
-        if len(self.templates) > 0:
-
-            self.beginRemoveRows(QModelIndex(), 0, self.rowCount() - 1)
-
-            for template in self.templates:
-                template.delete_template()
-
-            self.templates.clear()
-
-            self.endRemoveRows()
-
-    def print_templates(self) -> None:
-        for tp in self.templates:
-            print({f"Template: '{tp.get_name()}', Active: {str(tp.is_active())}"})
-
-    def get_templates(self):
-        return self.templates
-
-    def from_json(self, path: Path):
-
-        with open(path) as f:
-            data = json.load(f)
-
-        self.clear_templates()
-
-        templates = []
-
-        qgsproject = QgsProject().instance()
-
-        for d in data:
-
-            map_lyr_name = d['map_lyr_name']
-            map_lyrs = qgsproject.mapLayersByName(map_lyr_name)
-
-            map_lyr = None
-            if len(map_lyrs) == 1:
-                map_lyr = map_lyrs[0]
-            elif len(map_lyrs) > 1:
-                QgsMessageLog.logMessage(f"Multiple layers named {map_lyr_name}", tag=__title__, level=Qgis.Warning)
-            else:
-                QgsMessageLog.logMessage(f"Could not find a layer named {map_lyr_name}", tag=__title__, level=Qgis.Warning)
-
-            template = FeatureTemplate(parent=self, widget=self.parent(),name=d['name'], shortcut_str=d['shortcut_str'],
-                                       map_lyr=map_lyr, default_values=d['default_values'])
-
-            templates.append(template)
-
-        self.add_templates(templates)
-
-class QgsMapLayerComboDelegate(QStyledItemDelegate):
-
-    def __init__(self, parent):
-        super().__init__(parent)
-
-    def paint(self, painter, option, index):
-        self.parent().openPersistentEditor(index)
-        super().paint(painter, option, index)
-
-    def createEditor(self, parent, option, index):
-        editor = QgsMapLayerComboBox(parent)
-        editor.setFilters(QgsMapLayerProxyModel.VectorLayer)
-        editor.setAllowEmptyLayer(True)
-        editor.layerChanged.connect(self.layerSelected)
-        return editor
-
-    def setEditorData(self, editor, index):
-        map_lyr = index.model().templates[index.row()].map_lyr
-        editor.setLayer(map_lyr)
-
-    def setModelData(self, editor, model, index):
-        data = editor.currentLayer()
-        model.setData(index, data)
-
-    @pyqtSlot()
-    def layerSelected(self):
-        # This function simply closes the editor when a layer is selected so
-        # that the model data is changed immediately
-        self.closeEditor.emit(self.sender())
-
-
-class DefaultValueDelegate(QItemDelegate):
-
-    def __init__(self, parent):
-        super().__init__(parent)
-
-    def createEditor(self, parent, option, index):
-        template = index.model().templates[index.row()].map_lyr
-        editor = DefaultValueEditor(template)
-        # editor.setWindowFlags(Qt.Popup)
-        return editor
-
-    def setModelData(self, editor, model, index):
-        if editor.result() == QDialog.Accepted:
-            data = editor.get_default_values()
-            model.setData(index, data)
-
-    def setEditorData(self, editor, index):
-        template = index.model().templates[index.row()]
-        editor.set_default_values(template.get_default_values())
-
-
-class RemoveDelegate(QItemDelegate):
-
-    def __init__(self, parent, delete_icon):
-        super().__init__(parent)
-        self.delete_icon = delete_icon
-
-    def createEditor(self, parent, option, index):
-        model = index.model()
-        template = model.templates[index.row()]
-        editor = QPushButton(parent)
-        editor.setIcon(self.delete_icon)
-        editor.setIconSize(QSize(20,20))
-        editor.clicked.connect(lambda: model.remove_template(template))
-        # editor.setWindowFlags(Qt.Popup)
-        return editor
-
-    def paint(self, painter, option, index):
-        self.parent().openPersistentEditor(index)
-        super().paint(painter, option, index)
-
-    def setModelData(self, editor, model, index):
-        model.setData(index, True)
-    #
-    # def setEditorData(self, editor, index):
-    #     template = index.model().templates[index.row()]
-    #     editor.set_default_values(template.get_default_values())
-
 
 def get_field_id(map_lyr: QgsVectorLayer, field_name: str) -> int:
     field_idx = map_lyr.fields().indexFromName(field_name)
