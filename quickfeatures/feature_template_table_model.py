@@ -10,7 +10,8 @@ import json
 
 # qgis
 from qgis.gui import QgsMapLayerComboBox
-from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis, QgsMapLayerProxyModel, QgsMapLayer, QgsVectorLayer
+from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis, QgsMapLayerProxyModel, QgsMapLayer, \
+    QgsVectorLayer
 from qgis.utils import iface
 
 # PyQt
@@ -74,7 +75,8 @@ class FeatureTemplateTableModel(QAbstractTableModel):
                 return template.get_name()
 
             elif column_header_label == "Default Values":
-                def_val_str = '\n'.join([f'{key}: {str(value)}' for key, value in template.get_default_values().items()])
+                def_val_str = '\n'.join(
+                    [f'{key}: {str(value)}' for key, value in template.get_default_values().items()])
                 return def_val_str
 
             elif column_header_label == "Shortcut":
@@ -235,18 +237,18 @@ class FeatureTemplateTableModel(QAbstractTableModel):
 
         with open(path) as f:
             data = json.load(f)
-            
-        for d in data:
 
+        for d in data:
             map_lyr = map_lyr_from_name(qgsproject, d['map_lyr_name'])
 
-            template = FeatureTemplate(parent=self, widget=self.parent(),name=d['name'], shortcut_str=d['shortcut_str'],
+            template = FeatureTemplate(parent=self, widget=self.parent(), name=d['name'],
+                                       shortcut_str=d['shortcut_str'],
                                        map_lyr=map_lyr, default_values=d['default_values'])
 
             templates.append(template)
 
         self.add_templates(templates)
-        
+
     def from_xml(self, elem: QDomElement):
 
         self.clear_templates()
@@ -254,31 +256,31 @@ class FeatureTemplateTableModel(QAbstractTableModel):
         templates = []
 
         qgsproject = QgsProject().instance()
-    
+
         template_elems = elem.childNodes()
 
         for i in range(template_elems.length()):
-      
+
             template_elem = template_elems.item(i)
             template_attr = template_elem.attributes()
-            
+
             name = template_attr.namedItem('name').nodeValue()
             shortcut_str = template_attr.namedItem('shortcut').nodeValue()
             map_lyr_name = template_attr.namedItem('map_lyr').nodeValue()
-            
+
             default_values = {}
             default_value_elems = template_elem.namedItem('default_values').childNodes()
-            
-            #QgsMessageLog.logMessage(f"Template '{name}' has {default_value_elems.length()} default values", tag=__title__, level=Qgis.Warning)
-            
+
+            # QgsMessageLog.logMessage(f"Template '{name}' has {default_value_elems.length()} default values", tag=__title__, level=Qgis.Warning)
+
             for i in range(default_value_elems.length()):
-            
+
                 default_value_elem = default_value_elems.item(i)
                 default_value_attr = default_value_elem.attributes()
-                
+
                 field = default_value_attr.namedItem('field').nodeValue()
                 value = default_value_attr.namedItem('value').nodeValue()
-                
+
                 if value.lower() == 'true':
                     value = True
                 elif value.lower() == 'false':
@@ -287,18 +289,18 @@ class FeatureTemplateTableModel(QAbstractTableModel):
                     value = int(value)
                 elif is_float(value):
                     value = float(value)
-                
+
                 default_values[field] = value
-                
+
             map_lyr = map_lyr_from_name(qgsproject, map_lyr_name)
-            
-            template = FeatureTemplate(parent=self, widget=self.parent(),name=name, shortcut_str=shortcut_str,
-                                   map_lyr=map_lyr, default_values=default_values)
+
+            template = FeatureTemplate(parent=self, widget=self.parent(), name=name, shortcut_str=shortcut_str,
+                                       map_lyr=map_lyr, default_values=default_values)
 
             templates.append(template)
 
-
         self.add_templates(templates)
+
 
 class QgsMapLayerComboDelegate(QStyledItemDelegate):
 
@@ -363,7 +365,7 @@ class RemoveDelegate(QItemDelegate):
         template = model.templates[index.row()]
         editor = QPushButton(parent)
         editor.setIcon(self.delete_icon)
-        editor.setIconSize(QSize(20,20))
+        editor.setIconSize(QSize(20, 20))
         editor.clicked.connect(lambda: model.remove_template(template))
         # editor.setWindowFlags(Qt.Popup)
         return editor
@@ -380,21 +382,19 @@ class RemoveDelegate(QItemDelegate):
     #     editor.set_default_values(template.get_default_values())
 
 
-
 def map_lyr_from_name(qgsproject: QgsProject, name):
-
     map_lyrs = qgsproject.mapLayersByName(name)
 
     map_lyr = None
-    
+
     if len(map_lyrs) == 1:
         map_lyr = map_lyrs[0]
-        
+
     elif len(map_lyrs) > 1:
         ...
-        #iface.messageBar().pushMessage("Map layer", f"Multiple layers named {name}", level=Qgis.Warning)
+        # iface.messageBar().pushMessage("Map layer", f"Multiple layers named {name}", level=Qgis.Warning)
     else:
         ...
-        #QgsMessageLog.logMessage(f"Could not find a layer named {name}", tag=__title__, level=Qgis.Warning)
-        
+        # QgsMessageLog.logMessage(f"Could not find a layer named {name}", tag=__title__, level=Qgis.Warning)
+
     return map_lyr

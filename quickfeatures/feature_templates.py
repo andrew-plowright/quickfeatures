@@ -156,6 +156,9 @@ class FeatureTemplate(QObject):
                 self.active = True
                 self.activateChanged.emit(True)
 
+                # Set the template's layer as active in the interface
+                iface.setActiveLayer(self.get_map_lyr())
+
         else:
             if self.active:
                 # QgsMessageLog.logMessage(f"Deactivated template '{self.name}'", tag=__title__, level=Qgis.Info)
