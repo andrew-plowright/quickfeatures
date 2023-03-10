@@ -27,7 +27,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
         "Active",
         "Name",
         "Shortcut",
-        "Default Values",
+        "Values",
         "Layer",
         "Remove",
     ]
@@ -74,7 +74,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
             if column_header_label == "Name":
                 return template.get_name()
 
-            elif column_header_label == "Default Values":
+            elif column_header_label == "Values":
                 def_val_str = '\n'.join(
                     [f'{key}: {str(value)}' for key, value in template.get_default_values().items()])
                 return def_val_str
@@ -146,7 +146,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
                 value = None
             return template.set_name(value)
 
-        if column_header_label == 'Default Values':
+        if column_header_label == 'Values':
             if value == "":
                 value = None
             return template.set_default_values(value)

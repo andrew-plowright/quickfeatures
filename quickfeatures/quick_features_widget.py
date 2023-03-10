@@ -71,6 +71,9 @@ class QuickFeaturesWidget(QWidget):
 
     def init_table(self):
 
+        # Set row height
+        self.table_view.verticalHeader().setDefaultSectionSize(30)
+
         # Set table's model
         self.table_model = FeatureTemplateTableModel(parent=self, templates=None)
 
@@ -87,7 +90,7 @@ class QuickFeaturesWidget(QWidget):
         self.table_map_lyr_delegate = QgsMapLayerComboDelegate(self.table_view)
         self.table_view.setItemDelegateForColumn(map_lyr_col, self.table_map_lyr_delegate)
 
-        # Set delegate for map layer column
+        # Set delegate for remove template column
         remove_col = 5
         delete_icon = QIcon(os.path.join(self.icon_dir, 'mActionDeleteSelected.svg'))
         self.remove_delegate = RemoveDelegate(self.table_view, delete_icon)
