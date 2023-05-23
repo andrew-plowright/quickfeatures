@@ -27,8 +27,8 @@ class FeatureTemplateTableModel(QAbstractTableModel):
         "Active",
         "Name",
         "Shortcut",
-        "Values",
         "Layer",
+        "Values",
         "Remove",
     ]
 
@@ -43,7 +43,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
             header_name = self.header_labels[section]
-            if header_name is 'Remove' or header_name is 'Active':
+            if header_name is 'Active':
                 return None
             else:
                 return header_name
@@ -70,14 +70,8 @@ class FeatureTemplateTableModel(QAbstractTableModel):
         template = self.templates[row]
 
         if role == Qt.DisplayRole:
-
             if column_header_label == "Name":
                 return template.get_name()
-
-            elif column_header_label == "Values":
-                def_val_str = '\n'.join(
-                    [f'{key}: {str(value)}' for key, value in template.get_default_values().items()])
-                return def_val_str
 
             elif column_header_label == "Shortcut":
                 return template.get_shortcut_str()
@@ -107,17 +101,11 @@ class FeatureTemplateTableModel(QAbstractTableModel):
             return Qt.NoItemFlags
 
         column_header_label = self.header_labels[index.column()]
-        template = self.templates[index.row()]
 
         if column_header_label == 'Active':
             return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
         else:
             return Qt.ItemIsEnabled | Qt.ItemIsEditable
-
-        # elif column_header_label == 'Layer':
-        #     return Qt.ItemIsEditable | Qt.ItemIsEnabled
-        # else:
-        #     return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
 
     def setData(self, index, value, role=Qt.EditRole):
 
@@ -315,7 +303,7 @@ class QgsMapLayerComboDelegate(QStyledItemDelegate):
         editor = QgsMapLayerComboBox(parent)
         editor.setFilters(QgsMapLayerProxyModel.VectorLayer)
         editor.setAllowEmptyLayer(True)
-        editor.layerChanged.connect(self.layerSelected)
+        editor.layerChanged.connect(lambda: self.closeEditor.emit(editor))
         return editor
 
     def setEditorData(self, editor, index):
@@ -326,32 +314,37 @@ class QgsMapLayerComboDelegate(QStyledItemDelegate):
         data = editor.currentLayer()
         model.setData(index, data)
 
-    @pyqtSlot()
-    def layerSelected(self):
-        # This function simply closes the editor when a layer is selected so
-        # that the model data is changed immediately
-        self.closeEditor.emit(self.sender())
-
 
 class DefaultValueDelegate(QItemDelegate):
 
-    def __init__(self, parent):
+    def __init__(self, parent, table_icon):
         super().__init__(parent)
+        self.table_icon = table_icon
+
+    def paint(self, painter, option, index):
+        self.parent().openPersistentEditor(index)
+        super().paint(painter, option, index)
 
     def createEditor(self, parent, option, index):
-        template = index.model().templates[index.row()].map_lyr
-        editor = DefaultValueEditor(template)
-        # editor.setWindowFlags(Qt.Popup)
+        map_lyr = index.model().templates[index.row()].map_lyr
+        editor = QPushButton(parent)
+        editor.dialog = DefaultValueEditor(map_lyr)
+        editor.dialog.accepted.connect(lambda: self.commitData.emit(editor))
+        editor.setIcon(self.table_icon)
+        editor.setIconSize(QSize(20, 20))
+        editor.clicked.connect(editor.dialog.show)
         return editor
-
-    def setModelData(self, editor, model, index):
-        if editor.result() == QDialog.Accepted:
-            data = editor.get_default_values()
-            model.setData(index, data)
 
     def setEditorData(self, editor, index):
         template = index.model().templates[index.row()]
-        editor.set_default_values(template.get_default_values())
+        editor.dialog.set_editor_default_values(template.get_default_values())
+
+    def setModelData(self, editor, model, index):
+        QgsMessageLog.logMessage(f"DefaultValueDelegate: 'setModelData' has been triggered", tag=__title__,
+                                 level=Qgis.Info)
+        if editor.dialog.result() == QDialog.Accepted:
+            data = editor.dialog.get_editor_default_values()
+            model.setData(index, data)
 
 
 class RemoveDelegate(QItemDelegate):
@@ -376,10 +369,6 @@ class RemoveDelegate(QItemDelegate):
 
     def setModelData(self, editor, model, index):
         model.setData(index, True)
-    #
-    # def setEditorData(self, editor, index):
-    #     template = index.model().templates[index.row()]
-    #     editor.set_default_values(template.get_default_values())
 
 
 def map_lyr_from_name(qgsproject: QgsProject, name):

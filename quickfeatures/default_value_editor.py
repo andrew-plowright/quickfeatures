@@ -8,13 +8,13 @@ from typing import Dict, List
 
 # qgis
 from qgis.core import QgsMapLayer, QgsMessageLog, Qgis, QgsDefaultValue, QgsVectorLayer
+from qgis.utils import iface
 
 # PyQt
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import Qt, QPoint, QSize
 from qgis.PyQt.QtGui import QCursor
-from qgis.PyQt.QtWidgets import QDialog, QHeaderView
-
+from qgis.PyQt.QtWidgets import QDialog, QHeaderView, QDesktopWidget, QPushButton
 
 class DefaultValueEditor(QDialog):
 
@@ -36,17 +36,26 @@ class DefaultValueEditor(QDialog):
         self.cancel_button.clicked.connect(self.reject)
 
     def showEvent(self, event):
-        # Show the dialog at the current mouse position
+
         self.resize(380, 250)
+
+        # Show the dialog at the current mouse position
         geom = self.frameGeometry()
-        geom.moveCenter(QCursor.pos())
+
+        win = iface.mainWindow()
+        p = win.pos()
+        r = win.rect()
+        np = QPoint(int(p.x() + r.width() / 2), int(p.y() + r.height() / 2))
+        #np = QCursor.pos()
+        geom.moveCenter(np)
         self.setGeometry(geom)
+
         super().showEvent(event)
 
-    def get_default_values(self) -> Dict[str, QgsDefaultValue]:
+    def get_editor_default_values(self) -> Dict[str, QgsDefaultValue]:
         return self.table_model.get_selected_default_values()
 
-    def set_default_values(self, default_values: Dict[str, QgsDefaultValue]):
+    def set_editor_default_values(self, default_values: Dict[str, QgsDefaultValue]):
         self.table_model.set_selected_default_values(default_values)
 
     def init_table(self, map_lyr):
