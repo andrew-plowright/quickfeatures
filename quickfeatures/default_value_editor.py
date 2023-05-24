@@ -1,6 +1,5 @@
 # Project
-from quickfeatures.__about__ import __title__
-from quickfeatures.default_value_options import DefaultValueOptionModel, DefaultValueOptionDelegate
+from quickfeatures.default_value_option_table_model import DefaultValueOptionTableModel, DefaultValueOptionDelegate
 
 # Misc
 from pathlib import Path
@@ -59,8 +58,9 @@ class DefaultValueEditor(QDialog):
         self.table_model.set_selected_default_values(default_values)
 
     def init_table(self, map_lyr):
+
         # Create model
-        self.table_model = DefaultValueOptionModel(map_lyr)
+        self.table_model = DefaultValueOptionTableModel(map_lyr)
         self.table_model.rowsInserted.connect(self.rows_inserted)
 
         # Connect view and model

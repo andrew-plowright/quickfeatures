@@ -1,61 +1,19 @@
 # Project
 from quickfeatures.__about__ import __title__
+from quickfeatures.default_value_option import *
 
 # Misc
-from typing import Dict, List
-import sys
+from typing import Dict
 
 # qgis
-from qgis.core import QgsMapLayer, QgsMessageLog, Qgis, QgsDefaultValue, QgsVectorLayer
-from qgis.gui import QgsSpinBox, QgsDoubleSpinBox, QgsDateTimeEdit, QgsDateEdit
+from qgis.core import QgsVectorLayer
+from qgis.gui import QgsDateTimeEdit, QgsDateEdit
 
 # PyQt
-from qgis.PyQt.QtCore import Qt, QSize, QModelIndex, QVariant, QAbstractTableModel, QDate, QDateTime
-from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QStyledItemDelegate, QComboBox, QApplication, QAction, QWidget, QLineEdit, \
-    QHBoxLayout, QVBoxLayout, QPushButton, QDialog, QLabel, QTableWidgetItem, QCheckBox, QHeaderView, QSpinBox, QDoubleSpinBox
+from qgis.PyQt.QtCore import Qt, QModelIndex, QVariant, QAbstractTableModel, QDate, QDateTime
+from qgis.PyQt.QtWidgets import QStyledItemDelegate, QLineEdit, QCheckBox, QSpinBox, QDoubleSpinBox
 
-
-class DefaultValueOption():
-
-    def __init__(self, name: str, data_type: str):
-        self.value = None
-        self.selected = False
-        self.valid = True
-        self.name = name
-        self.type = data_type
-
-    def set_value(self, value):
-        self.value = value
-
-    def get_value(self):
-        return self.value
-
-    def get_name(self) -> str:
-        return self.name
-
-    def get_type(self) -> str:
-        return self.type
-
-    def is_valid(self) -> bool:
-        return self.valid
-
-    def is_selected(self) -> bool:
-        return self.selected
-
-    def toggle_selected(self):
-        self.set_selected(not self.is_selected())
-
-    def set_selected(self, value) -> None:
-
-        if value:
-            if not self.is_selected() and self.is_valid():
-                self.selected = True
-        else:
-            if self.is_selected():
-                self.selected = False
-
-
-class DefaultValueOptionModel(QAbstractTableModel):
+class DefaultValueOptionTableModel(QAbstractTableModel):
     header_labels = [
         "Select",
         "Field",
@@ -186,10 +144,6 @@ class DefaultValueOptionModel(QAbstractTableModel):
             # Set its value and set it as 'selected'
             if default_value_option:
 
-                # QgsMessageLog.logMessage(f"set_selected_default_values: [{default_value_option.get_name()}] to [{set_default_values[field_name].expression()}]",
-                #                          tag=__title__,
-                #                          level=Qgis.Info)
-
                 default_value_option.set_selected(True)
                 default_value_option.set_value(set_default_values[field_name])
 
@@ -203,11 +157,6 @@ class DefaultValueOptionDelegate(QStyledItemDelegate):
     def __init__(self, parent):
         super().__init__(parent)
 
-    # def paint(self, painter, option, index):
-    #     self.parent().openPersistentEditor(index)
-    #     super().paint(painter, option, index)
-
-
     def createEditor(self, parent, option, index):
 
         default_val = index.model().default_values_options[index.row()]
@@ -218,7 +167,6 @@ class DefaultValueOptionDelegate(QStyledItemDelegate):
             editor = QSpinBox(parent)
             editor.setMaximum(2147483647)
             editor.setMinimum(-2147483648)
-
 
         elif field_type == 'String' or field_type == 'JSON':
             editor = QLineEdit(parent)
@@ -274,11 +222,6 @@ class DefaultValueOptionDelegate(QStyledItemDelegate):
         if data == "":
             data = None
 
-        # QgsMessageLog.logMessage(
-        #     f"\nValue [{data}]\n  - Type: [{type(data).__name__}]\n  - None: [{data == None}]",
-        #     tag=__title__, level=Qgis.Info)
-
-
         model.setData(index, data)
 
 
@@ -288,13 +231,6 @@ class DefaultValueOptionDelegate(QStyledItemDelegate):
 
         field_type = default_value_option.get_type()
         value = default_value_option.get_value()
-
-        # QgsMessageLog.logMessage(f"\nsetEditorData"
-        #                          f"\n  Field   : [{default_value_option.get_name()}]"
-        #                          f"\n  Checked : [{default_value_option.is_selected()}]"
-        #                          f"\n  Current : [{default_value_option.get_value()}] "
-        #                          f"\n  New val : [{value}]",
-        #                          tag=__title__, level=Qgis.Info)
 
         if not value == '' and value is not None:
 

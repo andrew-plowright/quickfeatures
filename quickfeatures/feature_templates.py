@@ -157,7 +157,11 @@ class FeatureTemplate(QObject):
                 self.activateChanged.emit(True)
 
                 # Set the template's layer as active in the interface
-                iface.setActiveLayer(self.get_map_lyr())
+                map_lyr = self.get_map_lyr()
+                iface.setActiveLayer(map_lyr)
+                if not map_lyr.isEditable():
+                    map_lyr.startEditing()
+                iface.actionAddFeature().trigger()
 
         else:
             if self.active:
@@ -329,7 +333,6 @@ class FeatureTemplate(QObject):
         template_elem.appendChild(default_values_elem)
         
         return template_elem
-        
 
     @staticmethod
     def confirm_deletion(self):

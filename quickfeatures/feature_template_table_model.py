@@ -4,22 +4,19 @@ from quickfeatures.feature_templates import FeatureTemplate, is_float
 from quickfeatures.__about__ import __title__
 
 # Misc
-from typing import Dict, List
+from typing import List
 from pathlib import Path
 import json
 
 # qgis
 from qgis.gui import QgsMapLayerComboBox
-from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis, QgsMapLayerProxyModel, QgsMapLayer, \
-    QgsVectorLayer
-from qgis.utils import iface
+from qgis.core import QgsMessageLog, QgsProject, Qgis, QgsMapLayerProxyModel
 
 # PyQt
-from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QSize, QObject, pyqtSignal, pyqtSlot
-from qgis.PyQt.QtGui import QKeySequence, QColor
-from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QStyledItemDelegate, QApplication, QAction, QDialog, \
-    QTableWidgetItem, QTableWidget, QPushButton
-from qgis.PyQt.QtXml import QDomDocument, QDomElement
+from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QSize, pyqtSlot
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import QItemDelegate, QStyledItemDelegate, QDialog, QPushButton
+from qgis.PyQt.QtXml import QDomElement
 
 
 class FeatureTemplateTableModel(QAbstractTableModel):
