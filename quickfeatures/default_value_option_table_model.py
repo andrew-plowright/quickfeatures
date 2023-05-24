@@ -4,14 +4,16 @@ from quickfeatures.default_value_option import *
 
 # Misc
 from typing import Dict
+from datetime import datetime
 
 # qgis
-from qgis.core import QgsVectorLayer
+from qgis.core import QgsVectorLayer, QgsMessageLog, Qgis
 from qgis.gui import QgsDateTimeEdit, QgsDateEdit
 
 # PyQt
 from qgis.PyQt.QtCore import Qt, QModelIndex, QVariant, QAbstractTableModel, QDate, QDateTime
 from qgis.PyQt.QtWidgets import QStyledItemDelegate, QLineEdit, QCheckBox, QSpinBox, QDoubleSpinBox
+from qgis.PyQt.QtGui import QColor
 
 class DefaultValueOptionTableModel(QAbstractTableModel):
     header_labels = [
@@ -57,6 +59,10 @@ class DefaultValueOptionTableModel(QAbstractTableModel):
             if column_header_label == "Field":
                 return default_val.get_name()
 
+        if role == Qt.ForegroundRole:
+            if column_header_label == "Field":
+                if not default_val.is_valid():
+                    return QColor(180, 180, 180)
 
     def flags(self, index):
 
@@ -69,15 +75,14 @@ class DefaultValueOptionTableModel(QAbstractTableModel):
         col = index.column()
         column_header_label = self.header_labels[col]
 
-        if not default_val.is_valid():
-            return Qt.ItemIsEnabled
-
         if column_header_label == 'Select':
             return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
-        if column_header_label == 'Field':
+        elif column_header_label == 'Field':
             return Qt.ItemIsEnabled
-        else:
+        elif column_header_label == 'Value':
             return Qt.ItemIsEnabled | Qt.ItemIsEditable
+        else:
+            return Qt.ItemIsEnabled
 
         # elif column_header_label == 'Layer':
         #     return Qt.ItemIsEditable | Qt.ItemIsEnabled
@@ -103,21 +108,62 @@ class DefaultValueOptionTableModel(QAbstractTableModel):
             default_value_option.set_value(value)
             return True
 
-    def add_fields(self, map_lyr: QgsVectorLayer) -> None:
+    def set_default_values(self, map_lyr: QgsVectorLayer, default_values: Dict) -> None:
 
-        row = self.rowCount()
+        self.clear_default_values()
 
+        default_values_to_set = []
+
+        # Get fields from map layer
         if map_lyr:
-            fields = map_lyr.fields().toList()
 
-            self.beginInsertRows(QModelIndex(), row, row + len(fields) - 1)
+            field_list = map_lyr.fields().toList()
 
-            for field in fields:
-                default_val = DefaultValueOption(name=field.name(), data_type=field.typeName())
+            for field in field_list:
+                default_values_to_set.append(
+                    DefaultValueOption(name=field.name(), data_type=field.typeName(), selected=False, valid=True)
+                )
 
-                self.default_values_options.append(default_val)
+        # Get fields from default values
+        for field_name in default_values:
+
+            value = default_values[field_name]
+
+            add_invalid_default_value = True
+
+            for existing_default_value in default_values_to_set:
+                if existing_default_value.get_name() == field_name:
+                    existing_default_value.set_selected(True)
+                    existing_default_value.set_value(value)
+                    add_invalid_default_value = False
+
+            if add_invalid_default_value:
+
+                default_values_to_set.append(
+                    DefaultValueOption(name=field_name, data_type=guess_editor_type(value), selected=True, valid=False, value=value)
+                )
+
+        # Add rows to model
+        if default_values_to_set:
+
+            row = self.rowCount()
+            self.beginInsertRows(QModelIndex(), row, row + len(default_values_to_set) - 1)
+
+            self.default_values_options = default_values_to_set
 
             self.endInsertRows()
+
+
+        # QgsMessageLog.logMessage(f".... start row count {row}", tag=__title__, level=Qgis.Info)
+
+        #QgsMessageLog.logMessage(f".... end row count {self.rowCount()}", tag=__title__, level=Qgis.Info)
+
+    def clear_default_values(self):
+        if len(self.default_values_options) > 0:
+
+            self.beginRemoveRows(QModelIndex(), 0, self.rowCount() - 1)
+            self.default_values_options.clear()
+            self.endRemoveRows()
 
     def get_selected_default_values(self) -> Dict:
         out_values = {}
@@ -129,28 +175,28 @@ class DefaultValueOptionTableModel(QAbstractTableModel):
 
         return out_values
 
-    def set_selected_default_values(self, set_default_values: Dict):
-
-        for field_name in set_default_values:
-
-            # Check if this field name exists
-            default_value_option = None
-            row = None
-            for i in range(len(self.default_values_options)):
-                if self.default_values_options[i].get_name() == field_name:
-                    default_value_option = self.default_values_options[i]
-                    row = i
-
-            # Set its value and set it as 'selected'
-            if default_value_option:
-
-                default_value_option.set_selected(True)
-                default_value_option.set_value(set_default_values[field_name])
-
-                index1 = self.createIndex(row, 0)
-                index2 = self.createIndex(row, self.columnCount())
-
-                self.dataChanged.emit(index1, index2)
+    # def set_selected_default_values(self, default_values: Dict):
+    #
+    #     for field_name in default_values:
+    #
+    #         # Check if this field name exists
+    #         default_value_option = None
+    #         row = None
+    #         for i in range(len(self.default_values_options)):
+    #             if self.default_values_options[i].get_name() == field_name:
+    #                 default_value_option = self.default_values_options[i]
+    #                 row = i
+    #
+    #         # Set its value and set it as 'selected'
+    #         if default_value_option:
+    #
+    #             default_value_option.set_selected(True)
+    #             default_value_option.set_value(default_values[field_name])
+    #
+    #             index1 = self.createIndex(row, 0)
+    #             index2 = self.createIndex(row, self.columnCount())
+    #
+    #             self.dataChanged.emit(index1, index2)
 
 class DefaultValueOptionDelegate(QStyledItemDelegate):
 
@@ -233,27 +279,57 @@ class DefaultValueOptionDelegate(QStyledItemDelegate):
         value = default_value_option.get_value()
 
         if not value == '' and value is not None:
+            try:
+                if field_type == 'Integer64' or field_type == 'Integer':
+                    editor.setValue(value)
 
-            if field_type == 'Integer64' or field_type == 'Integer':
-                editor.setValue(value)
+                elif field_type == 'String' or field_type == 'JSON':
 
-            elif field_type == 'String' or field_type == 'JSON':
+                    editor.setText(value)
+                    editor.deselect()
 
-                editor.setText(value)
-                editor.deselect()
+                elif field_type == 'Real':
+                    editor.setValue(value)
 
-            elif field_type == 'Real':
-                editor.setValue(value)
+                elif field_type == 'Date':
+                    date = QDate.fromString(value, 'yyyy-MM-dd')
+                    editor.setDate(date)
 
-            elif field_type == 'Date':
-                date = QDate.fromString(value, 'yyyy-MM-dd')
-                editor.setDate(date)
+                elif field_type == 'DateTime':
+                    date_time = QDateTime.fromString(value, 'yyyy-MM-dd hh:mm:ss')
+                    editor.setDateTime(date_time)
 
-            elif field_type == 'DateTime':
-                date_time = QDateTime.fromString(value, 'yyyy-MM-dd hh:mm:ss')
-                editor.setDateTime(date_time)
+                elif field_type == 'Boolean':
+                    editor.setChecked(value)
+                else:
+                    ...
+            except TypeError:
+                pass
 
-            elif field_type == 'Boolean':
-                editor.setChecked(value)
-            else:
-                ...
+
+
+def guess_editor_type(value):
+
+    if value is None:
+        return 'String'
+    elif isinstance(value, str):
+        try:
+            datetime.strptime(value, "%Y-%m-%d")
+            return 'Date'
+        except:
+            pass
+        try:
+            datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+            return 'DateTime'
+        except:
+            pass
+        return 'String'
+    elif isinstance(value, int):
+        return 'Integer'
+    elif isinstance(value, float):
+        return 'Real'
+    elif isinstance(value, bool):
+        return 'Boolean'
+
+
+

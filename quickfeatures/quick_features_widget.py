@@ -1,6 +1,5 @@
 # Project
-from quickfeatures.feature_template_table_model import FeatureTemplateTableModel, QgsMapLayerComboDelegate, DefaultValueDelegate, \
-    RemoveDelegate
+from quickfeatures.feature_template_table_model import *
 from quickfeatures.__about__ import __title__
 
 # Standard
@@ -116,14 +115,9 @@ class QuickFeaturesWidget(QWidget):
 
     def add_template_dialog(self):
 
-        ...
+        template = FeatureTemplate(parent=self.table_model, widget=self, name=None, shortcut_str=None, map_lyr=None, default_values={})
 
-        # template_name = 'Complete this'
-        #
-        # template = FeatureTemplate(parent=self.table_model, widget=self, name=template_name, shortcut_str=None,
-        #                     map_lyr=None, default_values={})
-        #
-        # self.table_model.add_templates([template])
+        self.table_model.add_templates([template])
 
     def project_load(self, doc: QDomDocument):
     

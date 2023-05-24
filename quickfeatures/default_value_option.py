@@ -1,9 +1,9 @@
 class DefaultValueOption():
 
-    def __init__(self, name: str, data_type: str):
-        self.value = None
-        self.selected = False
-        self.valid = True
+    def __init__(self, name: str, data_type: str, selected = False, valid = True, value = None):
+        self.value = value
+        self.selected = selected
+        self.valid = valid
         self.name = name
         self.type = data_type
 
@@ -31,7 +31,7 @@ class DefaultValueOption():
     def set_selected(self, value) -> None:
 
         if value:
-            if not self.is_selected() and self.is_valid():
+            if not self.is_selected(): # and self.is_valid():
                 self.selected = True
         else:
             if self.is_selected():

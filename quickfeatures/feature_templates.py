@@ -231,7 +231,6 @@ class FeatureTemplate(QObject):
     def set_default_values(self, values: Dict) -> bool:
 
         #QgsMessageLog.logMessage(f"Default values set: {values}", tag=__title__, level=Qgis.Info)
-
         self.set_active(False)
 
         default_values = {}

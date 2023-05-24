@@ -1,3 +1,5 @@
+from quickfeatures.__about__ import __title__
+
 # Project
 from quickfeatures.default_value_option_table_model import DefaultValueOptionTableModel, DefaultValueOptionDelegate
 
@@ -17,8 +19,8 @@ from qgis.PyQt.QtWidgets import QDialog, QHeaderView, QDesktopWidget, QPushButto
 
 class DefaultValueEditor(QDialog):
 
-    def __init__(self,  map_lyr: QgsVectorLayer):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
         # Load UI file
         uic.loadUi(Path(__file__).parent / "gui/{}.ui".format(Path(__file__).stem), self)
@@ -29,12 +31,13 @@ class DefaultValueEditor(QDialog):
         # Add field names
         self.table_model = None
         self.default_value_option_delegate = None
-        self.init_table(map_lyr)
+        self.init_table()
 
         self.accept_button.clicked.connect(self.accept)
         self.cancel_button.clicked.connect(self.reject)
 
     def showEvent(self, event):
+        QgsMessageLog.logMessage(f"SHOW", tag=__title__, level=Qgis.Info)
 
         self.resize(380, 250)
 
@@ -54,13 +57,14 @@ class DefaultValueEditor(QDialog):
     def get_editor_default_values(self) -> Dict[str, QgsDefaultValue]:
         return self.table_model.get_selected_default_values()
 
-    def set_editor_default_values(self, default_values: Dict[str, QgsDefaultValue]):
-        self.table_model.set_selected_default_values(default_values)
+    def populate_table(self, map_lyr: QgsVectorLayer, default_values: Dict[str, QgsDefaultValue]):
+        self.table_model.set_default_values(map_lyr, default_values)
+        #self.table_model.set_selected_default_values(default_values)
 
-    def init_table(self, map_lyr):
+    def init_table(self):
 
         # Create model
-        self.table_model = DefaultValueOptionTableModel(map_lyr)
+        self.table_model = DefaultValueOptionTableModel(self)
         self.table_model.rowsInserted.connect(self.rows_inserted)
 
         # Connect view and model
@@ -69,9 +73,6 @@ class DefaultValueEditor(QDialog):
         # Set delegates
         self.default_value_option_delegate = DefaultValueOptionDelegate(self.table_view)
         self.table_view.setItemDelegateForColumn(2, self.default_value_option_delegate)
-
-        # Populate model
-        self.table_model.add_fields(map_lyr)
 
         # Set Column sizes
         header = self.table_view.horizontalHeader()

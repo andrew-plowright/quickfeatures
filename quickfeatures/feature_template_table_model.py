@@ -323,25 +323,41 @@ class DefaultValueDelegate(QItemDelegate):
         super().paint(painter, option, index)
 
     def createEditor(self, parent, option, index):
-        map_lyr = index.model().templates[index.row()].map_lyr
         editor = QPushButton(parent)
-        editor.dialog = DefaultValueEditor(map_lyr)
-        editor.dialog.accepted.connect(lambda: self.commitData.emit(editor))
+
         editor.setIcon(self.table_icon)
         editor.setIconSize(QSize(20, 20))
-        editor.clicked.connect(editor.dialog.show)
+
+        editor.dialog = DefaultValueEditor(parent)
+        editor.dialog.accepted.connect(lambda: self.commitData.emit(editor))
+
+        editor.clicked.connect(lambda: self.init_dialog(editor, index))
         return editor
 
     def setEditorData(self, editor, index):
-        template = index.model().templates[index.row()]
-        editor.dialog.set_editor_default_values(template.get_default_values())
+        # This is a bit of a hack, but the editor's data is getting populated in
+        # 'init_diolog' instead, given that I want this to happen every time
+        # the button is clicked
+        ...
 
     def setModelData(self, editor, model, index):
-        QgsMessageLog.logMessage(f"DefaultValueDelegate: 'setModelData' has been triggered", tag=__title__,
-                                 level=Qgis.Info)
+
+        # QgsMessageLog.logMessage(f"DefaultValueDelegate: 'setModelData' has been triggered", tag=__title__,
+        #                          level=Qgis.Info)
+
+        # Only set model data if dialog was accepted
         if editor.dialog.result() == QDialog.Accepted:
             data = editor.dialog.get_editor_default_values()
             model.setData(index, data)
+
+            # Reset result of dialog
+            editor.dialog.setResult(QDialog.Rejected)
+
+    # Populate the dialog and then open it`
+    def init_dialog(self, editor, index):
+        template = index.model().templates[index.row()]
+        editor.dialog.populate_table(template.map_lyr, template.get_default_values())
+        editor.dialog.open()
 
 
 class RemoveDelegate(QItemDelegate):
