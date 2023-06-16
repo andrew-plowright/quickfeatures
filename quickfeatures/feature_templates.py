@@ -210,21 +210,9 @@ class FeatureTemplate(QObject):
 
     def get_default_values(self) -> Dict:
 
-        # Strip away single quotes
         out_dict = {}
         for key, value in self.default_values.items():
-            out = value.expression()
-            if out.lower() == 'true':
-                out = True
-            elif out.lower() == 'false':
-                out = False
-            elif out.lstrip('-').isdigit():
-                out = int(out)
-            elif is_float(out):
-                out = float(out)
-            else:
-                out = out.strip("\'")
-            out_dict[key] = out
+            out_dict[key] = value.expression()
 
         return out_dict
 
@@ -236,10 +224,6 @@ class FeatureTemplate(QObject):
         default_values = {}
         for key, value in values.items():
 
-            if isinstance(value, str):
-                value = f"'{value}'"
-            else:
-                value = str(value)
             default_values[key] = QgsDefaultValue(value)
 
         self.default_values = default_values
@@ -317,13 +301,7 @@ class FeatureTemplate(QObject):
         for key, value in self.get_default_values().items():
                     
             default_value = doc.createElement('default_value')
-            
-            if isinstance(value, bool):
-                if value:
-                    value = 'true'
-                else:
-                    value = 'false'
-            
+
             default_value.setAttribute('field', key)
             default_value.setAttribute('value', str(value))
             
@@ -351,13 +329,3 @@ def get_field_id(map_lyr: QgsVectorLayer, field_name: str) -> int:
         raise Exception(f"Could not find '{field_name}'")
 
     return field_idx
-
-def is_float(element: any) -> bool:
-
-    if element is None:
-        return False
-    try:
-        float(element)
-        return True
-    except ValueError:
-        return False

@@ -1,6 +1,6 @@
 # Project
 from quickfeatures.default_value_editor import *
-from quickfeatures.feature_templates import FeatureTemplate, is_float
+from quickfeatures.feature_templates import FeatureTemplate
 from quickfeatures.__about__ import __title__
 
 # Misc
@@ -40,7 +40,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
             header_name = self.header_labels[section]
-            if header_name is 'Active':
+            if header_name == 'Active':
                 return None
             else:
                 return header_name
@@ -265,15 +265,6 @@ class FeatureTemplateTableModel(QAbstractTableModel):
 
                 field = default_value_attr.namedItem('field').nodeValue()
                 value = default_value_attr.namedItem('value').nodeValue()
-
-                if value.lower() == 'true':
-                    value = True
-                elif value.lower() == 'false':
-                    value = False
-                elif value.lstrip('-').isdigit():
-                    value = int(value)
-                elif is_float(value):
-                    value = float(value)
 
                 default_values[field] = value
 

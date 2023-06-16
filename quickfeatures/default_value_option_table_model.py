@@ -110,6 +110,12 @@ class DefaultValueOptionTableModel(QAbstractTableModel):
 
     def set_default_values(self, map_lyr: QgsVectorLayer, default_values: Dict) -> None:
 
+        # This is called when the editor is initialized.
+        # The editor's table will be populated with fields based on:
+        #   1. The default values that belong to the template (provided through the 'default_values' parameter)
+        #   2. The fields available in the template's map layer (provided through the 'map_lyr' parameter)
+
+        # Begin by clearing the table
         self.clear_default_values()
 
         default_values_to_set = []
@@ -121,7 +127,7 @@ class DefaultValueOptionTableModel(QAbstractTableModel):
 
             for field in field_list:
                 default_values_to_set.append(
-                    DefaultValueOption(name=field.name(), data_type=field.typeName(), selected=False, valid=True)
+                    DefaultValueOption(name=field.name(), selected=False, valid=True)
                 )
 
         # Get fields from default values
@@ -140,7 +146,7 @@ class DefaultValueOptionTableModel(QAbstractTableModel):
             if add_invalid_default_value:
 
                 default_values_to_set.append(
-                    DefaultValueOption(name=field_name, data_type=guess_editor_type(value), selected=True, valid=False, value=value)
+                    DefaultValueOption(name=field_name, selected=True, valid=False, value=value)
                 )
 
         # Add rows to model
@@ -153,10 +159,8 @@ class DefaultValueOptionTableModel(QAbstractTableModel):
 
             self.endInsertRows()
 
-
         # QgsMessageLog.logMessage(f".... start row count {row}", tag=__title__, level=Qgis.Info)
-
-        #QgsMessageLog.logMessage(f".... end row count {self.rowCount()}", tag=__title__, level=Qgis.Info)
+        # QgsMessageLog.logMessage(f".... end row count {self.rowCount()}", tag=__title__, level=Qgis.Info)
 
     def clear_default_values(self):
         if len(self.default_values_options) > 0:
@@ -166,6 +170,10 @@ class DefaultValueOptionTableModel(QAbstractTableModel):
             self.endRemoveRows()
 
     def get_selected_default_values(self) -> Dict:
+
+        # When the editor is closed, this function will grab all default value options that
+        # are selected and return them to the template
+
         out_values = {}
         for default_values_options in self.default_values_options:
             if default_values_options.is_selected():
@@ -175,28 +183,6 @@ class DefaultValueOptionTableModel(QAbstractTableModel):
 
         return out_values
 
-    # def set_selected_default_values(self, default_values: Dict):
-    #
-    #     for field_name in default_values:
-    #
-    #         # Check if this field name exists
-    #         default_value_option = None
-    #         row = None
-    #         for i in range(len(self.default_values_options)):
-    #             if self.default_values_options[i].get_name() == field_name:
-    #                 default_value_option = self.default_values_options[i]
-    #                 row = i
-    #
-    #         # Set its value and set it as 'selected'
-    #         if default_value_option:
-    #
-    #             default_value_option.set_selected(True)
-    #             default_value_option.set_value(default_values[field_name])
-    #
-    #             index1 = self.createIndex(row, 0)
-    #             index2 = self.createIndex(row, self.columnCount())
-    #
-    #             self.dataChanged.emit(index1, index2)
 
 class DefaultValueOptionDelegate(QStyledItemDelegate):
 
@@ -205,131 +191,33 @@ class DefaultValueOptionDelegate(QStyledItemDelegate):
 
     def createEditor(self, parent, option, index):
 
-        default_val = index.model().default_values_options[index.row()]
-
-        field_type = default_val.get_type()
-
-        if field_type == 'Integer64' or field_type == 'Integer':
-            editor = QSpinBox(parent)
-            editor.setMaximum(2147483647)
-            editor.setMinimum(-2147483648)
-
-        elif field_type == 'String' or field_type == 'JSON':
-            editor = QLineEdit(parent)
-
-        elif field_type == 'Real':
-            editor = QDoubleSpinBox(parent)
-            editor.setMaximum(float('inf'))
-            editor.setMinimum(float('-inf'))
-            editor.setDecimals(7)
-
-        elif field_type == 'Date':
-            editor = QgsDateEdit(parent)
-
-        elif field_type == 'DateTime':
-            editor = QgsDateTimeEdit(parent)
-
-        elif field_type == 'Boolean':
-            editor = QCheckBox(parent)
-        else:
-            editor = QLineEdit(parent)
-
-        return editor
+        return QLineEdit(parent)
 
     def setModelData(self, editor, model, index):
 
-        default_value_option = index.model().default_values_options[index.row()]
-
-        field_type = default_value_option.get_type()
-
         data = None
 
-        if field_type == 'Integer64' or field_type == 'Integer':
-            data = editor.value()
-
-        elif field_type == 'String' or field_type == 'JSON':
-            if editor.hasAcceptableInput():
-                data = editor.text()
-
-        elif field_type == 'Real':
-            data = editor.value()
-
-        elif field_type == 'Date':
-            data = editor.date().toString('yyyy-MM-dd')
-
-        elif field_type == 'DateTime':
-            data = editor.dateTime().toString('yyyy-MM-dd hh:mm:ss')
-
-        elif field_type == 'Boolean':
-            data = editor.isChecked()
-        else:
-            ...
+        if editor.hasAcceptableInput():
+            data = editor.text()
 
         if data == "":
             data = None
 
         model.setData(index, data)
 
-
     def setEditorData(self, editor, index):
 
         default_value_option = index.model().default_values_options[index.row()]
 
-        field_type = default_value_option.get_type()
         value = default_value_option.get_value()
+
+        # QgsMessageLog.logMessage(f"Setting value {value}", tag=__title__, level=Qgis.Info)
 
         if not value == '' and value is not None:
             try:
-                if field_type == 'Integer64' or field_type == 'Integer':
-                    editor.setValue(value)
-
-                elif field_type == 'String' or field_type == 'JSON':
-
-                    editor.setText(value)
-                    editor.deselect()
-
-                elif field_type == 'Real':
-                    editor.setValue(value)
-
-                elif field_type == 'Date':
-                    date = QDate.fromString(value, 'yyyy-MM-dd')
-                    editor.setDate(date)
-
-                elif field_type == 'DateTime':
-                    date_time = QDateTime.fromString(value, 'yyyy-MM-dd hh:mm:ss')
-                    editor.setDateTime(date_time)
-
-                elif field_type == 'Boolean':
-                    editor.setChecked(value)
-                else:
-                    ...
+                editor.setText(value)
+                editor.deselect()
             except TypeError:
                 pass
-
-
-
-def guess_editor_type(value):
-
-    if value is None:
-        return 'String'
-    elif isinstance(value, str):
-        try:
-            datetime.strptime(value, "%Y-%m-%d")
-            return 'Date'
-        except:
-            pass
-        try:
-            datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-            return 'DateTime'
-        except:
-            pass
-        return 'String'
-    elif isinstance(value, int):
-        return 'Integer'
-    elif isinstance(value, float):
-        return 'Real'
-    elif isinstance(value, bool):
-        return 'Boolean'
-
 
 

@@ -1,11 +1,10 @@
 class DefaultValueOption():
 
-    def __init__(self, name: str, data_type: str, selected = False, valid = True, value = None):
+    def __init__(self, name: str, selected = False, valid = True, value = None):
         self.value = value
         self.selected = selected
         self.valid = valid
         self.name = name
-        self.type = data_type
 
     def set_value(self, value):
         self.value = value
@@ -15,9 +14,6 @@ class DefaultValueOption():
 
     def get_name(self) -> str:
         return self.name
-
-    def get_type(self) -> str:
-        return self.type
 
     def is_valid(self) -> bool:
         return self.valid

@@ -4,8 +4,8 @@
 		"name": "Test City",
 		"map_lyr_name": "test_points",
 		"default_values": {
-			"name": "Template City",
-			"class": "city"
+			"name": "'Template City'",
+			"class": "'city'"
 		},
 		"shortcut_str": "C"
 	},
@@ -13,8 +13,8 @@
 		"name": "Test Lake",
 		"map_lyr_name": "test_points",
 		"default_values": {
-			"name": "Template Lake",
-			"class": "lake"
+			"name": "'Template Lake'",
+			"class": "'lake'"
 		},
 		"shortcut_str": "V"
 	
@@ -23,13 +23,13 @@
 		"name": "Test Combo",
 		"map_lyr_name": "test_points2",
 		"default_values": {
-			"name": "Combo",
-			"class": "combination",
-			"integer": 666,
-			"real": 6.66,
-			"datetime": "2021-01-01 01:01:11",
-			"date": "2022-02-22",
-			"boolean": true
+			"name": "'Combo'",
+			"class": "'combination'",
+			"integer": "666",
+			"real": "6.66",
+			"datetime": "'2021-01-01 01:01:11'",
+			"date": "'2022-02-22'",
+			"boolean": "true"
 		},
 		"shortcut_str": "F"
 	

@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>415</width>
-    <height>347</height>
+    <width>496</width>
+    <height>355</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -29,6 +29,19 @@
    <string>Select Default Values</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Default values are stored as expressions. Don't forget to format them appropriately. For example, strings should be single-quoted.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+     <property name="margin">
+      <number>6</number>
+     </property>
+    </widget>
+   </item>
    <item>
     <layout class="QVBoxLayout" name="vertical_layout" stretch="0,0">
      <property name="sizeConstraint">

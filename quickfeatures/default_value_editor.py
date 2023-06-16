@@ -28,7 +28,7 @@ class DefaultValueEditor(QDialog):
         # Set modality
         self.setWindowModality(Qt.ApplicationModal)
 
-        # Add field names
+        # Initialize table
         self.table_model = None
         self.default_value_option_delegate = None
         self.init_table()
@@ -37,7 +37,7 @@ class DefaultValueEditor(QDialog):
         self.cancel_button.clicked.connect(self.reject)
 
     def showEvent(self, event):
-        QgsMessageLog.logMessage(f"SHOW", tag=__title__, level=Qgis.Info)
+        # QgsMessageLog.logMessage(f"SHOW", tag=__title__, level=Qgis.Info)
 
         self.resize(380, 250)
 
