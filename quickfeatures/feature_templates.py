@@ -1,22 +1,18 @@
 # Project
-from quickfeatures.default_value_editor import *
 from quickfeatures.__about__ import __title__
 
 # Misc
 from typing import Dict, List
-from pathlib import Path
-import json
 
 # qgis
 from qgis.gui import QgsMapLayerComboBox
-from qgis.core import QgsMessageLog, QgsDefaultValue, QgsProject, Qgis, QgsMapLayerProxyModel, QgsMapLayer, QgsVectorLayer
+from qgis.core import QgsDefaultValue, QgsProject, Qgis, QgsMapLayerProxyModel, QgsMapLayer, QgsVectorLayer, QgsMessageLog
 from qgis.utils import iface
 
 # PyQt
-from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QSize, QObject, pyqtSignal, pyqtSlot
-from qgis.PyQt.QtGui import QKeySequence, QColor
-from qgis.PyQt.QtWidgets import QShortcut, QItemDelegate, QStyledItemDelegate, QApplication, QAction, QDialog, \
-    QTableWidgetItem, QTableWidget, QPushButton
+from qgis.PyQt.QtCore import QObject, pyqtSignal
+from qgis.PyQt.QtGui import QKeySequence
+from qgis.PyQt.QtWidgets import QShortcut,QApplication, QAction
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 
 class FeatureTemplate(QObject):
@@ -54,9 +50,11 @@ class FeatureTemplate(QObject):
         self.destroyed.connect(self.confirm_deletion)
 
     def get_name(self) -> str:
+
         return self.name
 
     def set_name(self, name) -> bool:
+
         if name is None:
             return False
         else:
@@ -84,21 +82,26 @@ class FeatureTemplate(QObject):
         self.check_validity()
 
     def remove_map_lyr(self):
+
         self.set_map_lyr(None)
 
     def get_map_lyr(self) -> QgsVectorLayer:
+
         return self.map_lyr
 
     def map_lyr_name(self) -> str:
+
         if self.map_lyr:
             return self.map_lyr.name()
         else:
             return 'None'
 
     def is_valid(self) -> bool:
+
         return self.valid
 
     def check_validity(self) -> bool:
+
         valid = True
         if self.map_lyr is None:
             #QgsMessageLog.logMessage(f"Feature template '{self.get_name()}' invalid: no Map layer", tag=__title__, level=Qgis.Warning)
@@ -119,6 +122,7 @@ class FeatureTemplate(QObject):
         return valid
 
     def set_validity(self, value):
+
         if value:
             if not self.valid:
                 self.valid = True
@@ -129,6 +133,7 @@ class FeatureTemplate(QObject):
                 self.validChanged.emit(False)
 
     def is_active(self) -> bool:
+
         return self.active
 
     def toggle_active(self):
@@ -199,10 +204,12 @@ class FeatureTemplate(QObject):
         return True
 
     def delete_shortcut(self) -> None:
+
         self.shortcut.setParent(None)
         self.shortcut.deleteLater()
 
     def get_shortcut_str(self) -> str:
+
         str = self.shortcut.key().toString()
         if str == '':
             str = 'None'
@@ -253,18 +260,21 @@ class FeatureTemplate(QObject):
         return default_values
 
     def set_lyr_form_suppress(self, suppress: int) -> None:
+
         edit_form = self.map_lyr.editFormConfig()
         edit_form.setSuppress(suppress)
         self.map_lyr.setEditFormConfig(edit_form)
 
     def get_lyr_form_suppress(self) -> int:
+
         return self.map_lyr.editFormConfig().suppress()
 
-    # This method is called when the 'writeMapLayer' signal is emitted
-    # The 'elem' QDomElement contains the layer information that will be saved to file
-    # This method is needed to prevent the default values that are activated by the
-    # template to be saved to file.
     def prevent_save(self, map_lyr: QgsMapLayer, elem: QDomElement, doc: QDomDocument):
+
+        # This method is called when the 'writeMapLayer' signal is emitted
+        # The 'elem' QDomElement contains the layer information that will be saved to file
+        # This method is needed to prevent the default values that are activated by the
+        # template to be saved to file.
 
         if self.is_active() and self.get_map_lyr() == map_lyr:
 
@@ -313,16 +323,19 @@ class FeatureTemplate(QObject):
 
     @staticmethod
     def confirm_deletion(self):
+
+        # QgsMessageLog.logMessage(f"Confirm deletion!", tag=__title__, level=Qgis.Info)
         ...
-        #QgsMessageLog.logMessage(f"Confirm deletion!", tag=__title__, level=Qgis.Info)
 
     def delete_template(self):
+
         self.set_active(False)
         self.delete_shortcut()
         self.setParent(None)
         self.deleteLater()
 
 def get_field_id(map_lyr: QgsVectorLayer, field_name: str) -> int:
+
     field_idx = map_lyr.fields().indexFromName(field_name)
 
     if field_idx == -1:

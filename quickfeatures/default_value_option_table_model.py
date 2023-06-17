@@ -4,15 +4,13 @@ from quickfeatures.default_value_option import *
 
 # Misc
 from typing import Dict
-from datetime import datetime
 
 # qgis
 from qgis.core import QgsVectorLayer, QgsMessageLog, Qgis
-from qgis.gui import QgsDateTimeEdit, QgsDateEdit
 
 # PyQt
-from qgis.PyQt.QtCore import Qt, QModelIndex, QVariant, QAbstractTableModel, QDate, QDateTime
-from qgis.PyQt.QtWidgets import QStyledItemDelegate, QLineEdit, QCheckBox, QSpinBox, QDoubleSpinBox
+from qgis.PyQt.QtCore import Qt, QModelIndex, QVariant, QAbstractTableModel
+from qgis.PyQt.QtWidgets import QStyledItemDelegate, QLineEdit
 from qgis.PyQt.QtGui import QColor
 
 class DefaultValueOptionTableModel(QAbstractTableModel):
@@ -84,10 +82,6 @@ class DefaultValueOptionTableModel(QAbstractTableModel):
         else:
             return Qt.ItemIsEnabled
 
-        # elif column_header_label == 'Layer':
-        #     return Qt.ItemIsEditable | Qt.ItemIsEnabled
-        # else:
-        #     return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
 
     def setData(self, index, value, role=Qt.EditRole):
 

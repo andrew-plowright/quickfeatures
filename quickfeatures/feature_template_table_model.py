@@ -10,7 +10,7 @@ import json
 
 # qgis
 from qgis.gui import QgsMapLayerComboBox
-from qgis.core import QgsMessageLog, QgsProject, Qgis, QgsMapLayerProxyModel
+from qgis.core import QgsProject, QgsMapLayerProxyModel, QgsMessageLog, Qgis
 
 # PyQt
 from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QSize, pyqtSlot
@@ -20,6 +20,7 @@ from qgis.PyQt.QtXml import QDomElement
 
 
 class FeatureTemplateTableModel(QAbstractTableModel):
+
     header_labels = [
         "Active",
         "Name",
@@ -29,13 +30,11 @@ class FeatureTemplateTableModel(QAbstractTableModel):
         "Remove",
     ]
 
-    def __init__(self, parent, templates: List[FeatureTemplate] = None):
+    def __init__(self, parent):
         super().__init__(parent)
 
         self.templates = []
         self.highlight_brush = parent.palette().highlight()
-        if templates is not None:
-            self.templates = templates
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
@@ -53,7 +52,6 @@ class FeatureTemplateTableModel(QAbstractTableModel):
         return len(self.header_labels)
 
     def data(self, index, role=Qt.DisplayRole):
-
         if not index.isValid():
             return QVariant()
 
@@ -93,7 +91,6 @@ class FeatureTemplateTableModel(QAbstractTableModel):
                     return QColor(180, 180, 180)
 
     def flags(self, index):
-
         if not index.isValid():
             return Qt.NoItemFlags
 
@@ -105,7 +102,6 @@ class FeatureTemplateTableModel(QAbstractTableModel):
             return Qt.ItemIsEnabled | Qt.ItemIsEditable
 
     def setData(self, index, value, role=Qt.EditRole):
-
         if not index.isValid():
             return False
 
@@ -137,7 +133,6 @@ class FeatureTemplateTableModel(QAbstractTableModel):
             return template.set_default_values(value)
 
     def add_templates(self, templates: List[FeatureTemplate]) -> None:
-
         row = self.rowCount()
 
         self.beginInsertRows(QModelIndex(), row, row + len(templates) - 1)
@@ -154,9 +149,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
 
     @pyqtSlot()
     def refresh_template(self) -> None:
-
         # QgsMessageLog.logMessage(f"Loaded map layer '{self.sender()}'", tag=__title__, level=Qgis.Info)
-
         row = self.templates.index(self.sender())
 
         index1 = self.createIndex(row, 0)
@@ -164,14 +157,8 @@ class FeatureTemplateTableModel(QAbstractTableModel):
 
         self.dataChanged.emit(index1, index2)
 
-        # col = self.header_labels.index('Active')
-        # index_start = self.createIndex(0, col)
-        # index_end = self.createIndex(self.rowCount() - 1, col)
-        # self.dataChanged.emit(index_start, index_end)
-
     @pyqtSlot()
     def deactivate_other_templates(self) -> None:
-
         template = self.sender()
 
         for row in range(len(self.templates)):
@@ -213,18 +200,17 @@ class FeatureTemplateTableModel(QAbstractTableModel):
         return self.templates
 
     def from_json(self, path: Path):
-
         self.clear_templates()
 
         templates = []
 
-        qgsproject = QgsProject().instance()
+        qgs_project = QgsProject().instance()
 
         with open(path) as f:
             data = json.load(f)
 
         for d in data:
-            map_lyr = map_lyr_from_name(qgsproject, d['map_lyr_name'])
+            map_lyr = vector_lyr_by_name(qgs_project, d['map_lyr_name'])
 
             template = FeatureTemplate(parent=self, widget=self.parent(), name=d['name'],
                                        shortcut_str=d['shortcut_str'],
@@ -234,13 +220,34 @@ class FeatureTemplateTableModel(QAbstractTableModel):
 
         self.add_templates(templates)
 
-    def from_xml(self, elem: QDomElement):
+    def to_json(self, path: Path):
+        templates = self.get_templates()
 
+        out_list = []
+
+        for template in templates:
+
+            template_json = {
+                'name': template.get_name(),
+                'map_lyr_name': template.map_lyr.name(),
+                'default_values': template.get_default_values(),
+                'shortcut_str': template.get_shortcut_str()
+            }
+
+            out_list.append(template_json)
+
+        json_object = json.dumps(out_list, indent=4)
+
+        with open(path, "w") as outfile:
+            outfile.write(json_object)
+
+
+    def from_xml(self, elem: QDomElement):
         self.clear_templates()
 
         templates = []
 
-        qgsproject = QgsProject().instance()
+        qgs_project = QgsProject().instance()
 
         template_elems = elem.childNodes()
 
@@ -268,7 +275,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
 
                 default_values[field] = value
 
-            map_lyr = map_lyr_from_name(qgsproject, map_lyr_name)
+            map_lyr = vector_lyr_by_name(qgs_project, map_lyr_name)
 
             template = FeatureTemplate(parent=self, widget=self.parent(), name=name, shortcut_str=shortcut_str,
                                        map_lyr=map_lyr, default_values=default_values)
@@ -282,10 +289,6 @@ class QgsMapLayerComboDelegate(QStyledItemDelegate):
 
     def __init__(self, parent):
         super().__init__(parent)
-
-    def paint(self, painter, option, index):
-        self.parent().openPersistentEditor(index)
-        super().paint(painter, option, index)
 
     def createEditor(self, parent, option, index):
         editor = QgsMapLayerComboBox(parent)
@@ -309,10 +312,6 @@ class DefaultValueDelegate(QItemDelegate):
         super().__init__(parent)
         self.table_icon = table_icon
 
-    def paint(self, painter, option, index):
-        self.parent().openPersistentEditor(index)
-        super().paint(painter, option, index)
-
     def createEditor(self, parent, option, index):
         editor = QPushButton(parent)
 
@@ -332,9 +331,6 @@ class DefaultValueDelegate(QItemDelegate):
         ...
 
     def setModelData(self, editor, model, index):
-
-        # QgsMessageLog.logMessage(f"DefaultValueDelegate: 'setModelData' has been triggered", tag=__title__,
-        #                          level=Qgis.Info)
 
         # Only set model data if dialog was accepted
         if editor.dialog.result() == QDialog.Accepted:
@@ -367,27 +363,21 @@ class RemoveDelegate(QItemDelegate):
         # editor.setWindowFlags(Qt.Popup)
         return editor
 
-    def paint(self, painter, option, index):
-        self.parent().openPersistentEditor(index)
-        super().paint(painter, option, index)
-
     def setModelData(self, editor, model, index):
         model.setData(index, True)
 
 
-def map_lyr_from_name(qgsproject: QgsProject, name):
-    map_lyrs = qgsproject.mapLayersByName(name)
+def vector_lyr_by_name(qgs_project: QgsProject, name):
 
-    map_lyr = None
+    # Get all map layers with this name
+    map_lyrs = qgs_project.mapLayersByName(name)
 
-    if len(map_lyrs) == 1:
-        map_lyr = map_lyrs[0]
+    # Filter out anything that is not a vector layer
+    vec_lyrs = [map_lyr for map_lyr in map_lyrs if isinstance(map_lyr, QgsVectorLayer)]
 
-    elif len(map_lyrs) > 1:
-        ...
-        # iface.messageBar().pushMessage("Map layer", f"Multiple layers named {name}", level=Qgis.Warning)
-    else:
-        ...
-        # QgsMessageLog.logMessage(f"Could not find a layer named {name}", tag=__title__, level=Qgis.Warning)
+    vec_lyr = None
 
-    return map_lyr
+    if len(vec_lyrs) > 0:
+        vec_lyr = vec_lyrs[0]
+
+    return vec_lyr

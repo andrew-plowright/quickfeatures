@@ -19,6 +19,7 @@ from qgis.PyQt.QtXml import QDomDocument, QDomElement
 class QuickFeaturesWidget(QWidget):
 
     def __init__(self, parent=None):
+
         super().__init__(parent)
 
         self.icon_dir = os.path.join(os.path.dirname(__file__), "resources/icons")
@@ -46,11 +47,11 @@ class QuickFeaturesWidget(QWidget):
 
         self.action_load_templates = QAction(QIcon(os.path.join(self.icon_dir, 'mActionFileOpen.svg')), "Load templates", self)
         self.action_load_templates.setStatusTip("Load templates")
-        self.action_load_templates.triggered.connect(self.load_data_dialog)
+        self.action_load_templates.triggered.connect(self.load_templates_dialog)
 
         self.action_save_templates = QAction(QIcon(os.path.join(self.icon_dir, 'mActionFileSave.svg')), "Save templates", self)
         self.action_save_templates.setStatusTip("Save templates")
-        #self.action_save_templates.triggered.connect(self.table_model.clear_templates)
+        self.action_save_templates.triggered.connect(self.save_templates_dialog)
 
         # Toolbar
         self.toolbar = QToolBar()
@@ -66,7 +67,7 @@ class QuickFeaturesWidget(QWidget):
         QgsProject.instance().writeProject.connect(self.project_save)
 
         # Button used for debugging purpose
-        self.add_debug_actions()
+        # self.add_debug_actions()
 
     def init_table(self):
 
@@ -74,7 +75,8 @@ class QuickFeaturesWidget(QWidget):
         self.table_view.verticalHeader().setDefaultSectionSize(30)
 
         # Set table's model
-        self.table_model = FeatureTemplateTableModel(parent=self, templates=None)
+        self.table_model = FeatureTemplateTableModel(parent=self)
+        self.table_model.rowsInserted.connect(self.table_rows_inserted)
 
         # Connect model to view
         self.table_view.setModel(self.table_model)
@@ -103,8 +105,23 @@ class QuickFeaturesWidget(QWidget):
         for col_num in [0, 2, col_default_value, col_remove]:
             header.setSectionResizeMode(col_num, QHeaderView.ResizeMode.ResizeToContents)
 
+    def table_rows_inserted(self, parent, first, last):
 
-    def load_data_dialog(self):
+        for row in range(first, last + 1):
+            for col in [3, 4, 5]:  # These are the columns with persistent widgets
+                self.table_view.openPersistentEditor(self.table_model.index(row, col))
+
+    def add_template_dialog(self):
+
+        template = FeatureTemplate(parent=self.table_model, widget=self, name=None, shortcut_str=None, map_lyr=None, default_values={})
+
+        self.table_model.add_templates([template])
+
+    def clean_up(self):
+
+        self.table_model.clear_templates()
+
+    def load_templates_dialog(self):
 
         file_name = QFileDialog.getOpenFileName(self, 'Open file', 'c:\\', "JSON file (*.json)")[0]
 
@@ -113,35 +130,33 @@ class QuickFeaturesWidget(QWidget):
 
         self.table_view.resizeColumnToContents(1)
 
-    def add_template_dialog(self):
+    def save_templates_dialog(self):
 
-        template = FeatureTemplate(parent=self.table_model, widget=self, name=None, shortcut_str=None, map_lyr=None, default_values={})
+        file_name = QFileDialog.getSaveFileName(self, 'Save file', 'c:\\', "JSON file (*.json)")[0]
 
-        self.table_model.add_templates([template])
+        if file_name != '':
+            self.table_model.to_json(Path(file_name))
 
     def project_load(self, doc: QDomDocument):
-    
-        root = doc.childNodes().item(0)
-        
-        plugin_elem = root.namedItem('quick_features')
-        
-        if not plugin_elem.isNull():
-                    
-            feature_templates_elem = plugin_elem.namedItem('feature_templates')
-        
-            self.table_model.from_xml(feature_templates_elem)
 
+        root = doc.childNodes().item(0)
+
+        plugin_elem = root.namedItem('quick_features')
+
+        if not plugin_elem.isNull():
+            feature_templates_elem = plugin_elem.namedItem('feature_templates')
+            self.table_model.from_xml(feature_templates_elem)
 
     def project_save(self, doc: QDomDocument):
 
         templates = self.table_model.get_templates()
-        
+
         if len(templates) > 0:
-        
+
             root = doc.childNodes().item(0)
             plugin_elem = doc.createElement('quick_features')
             templates_elem = doc.createElement('feature_templates')
-            
+
             for template in templates:
                 template_xml = template.to_xml(doc)
                 templates_elem.appendChild(template_xml)
@@ -149,38 +164,35 @@ class QuickFeaturesWidget(QWidget):
             plugin_elem.appendChild(templates_elem)
             root.appendChild(plugin_elem)
 
-    def clean_up(self):
-        self.table_model.clear_templates()
 
-    def add_debug_actions(self):
-
-        debug_mode = True
-        # QgsMessageLog.logMessage(f"Found DEBUG mode and it was '{debug_mode}'", tag=__title__, level=Qgis.Info)
-
-        if debug_mode:
-
-            self.action_testdata = QAction(QIcon(QgsApplication.iconPath("mIconFolderOpen.svg")),
-                                                 "Load Test Data", self)
-            self.action_debug = QAction(QIcon(QgsApplication.iconPath("mIndicatorBadLayer.svg")),
-                                                 "Debug", self)
-
-            self.action_testdata.triggered.connect(self.testdata)
-            self.action_debug.triggered.connect(self.debug)
-
-            self.toolbar.addAction(self.action_testdata)
-            self.toolbar.addAction(self.action_debug)
-
-
-    def testdata(self):
-
-        test_data_path = QgsProject.instance().readPath("./") + '/template_group.json'
-        self.table_model.from_json(Path(test_data_path))
-        self.table_view.resizeColumnToContents(1)
-
-    def debug(self):
-        QgsMessageLog.logMessage(f"Debug message", tag=__title__, level=Qgis.Info)
-
-        #QgsMessageLog.logMessage(f"My class is: {self.__class__.__name__}", tag=__title__, level=Qgis.Info)
-        QgsMessageLog.logMessage(f"My palette is: {type(self.palette()).__name__}", tag=__title__, level=Qgis.Info)
-
-        # existing_shortcuts = self.findChildren(QShortcut) + QgsGui.shortcutsManager().listShortcuts()
+    # def add_debug_actions(self):
+    #
+    #     debug_mode = True
+    #     # QgsMessageLog.logMessage(f"Found DEBUG mode and it was '{debug_mode}'", tag=__title__, level=Qgis.Info)
+    #
+    #     if debug_mode:
+    #
+    #         self.action_testdata = QAction(QIcon(QgsApplication.iconPath("mIconFolderOpen.svg")),
+    #                                              "Load test data", self)
+    #         self.action_debug = QAction(QIcon(QgsApplication.iconPath("mIndicatorBadLayer.svg")),
+    #                                              "Debug", self)
+    #
+    #         self.action_testdata.triggered.connect(self.load_test_data)
+    #         self.action_debug.triggered.connect(self.debug)
+    #
+    #         self.toolbar.addAction(self.action_testdata)
+    #         self.toolbar.addAction(self.action_debug)
+    #
+    # def load_test_data(self):
+    #
+    #     test_data_path = QgsProject.instance().readPath("./") + '/template_group.json'
+    #     self.table_model.from_json(Path(test_data_path))
+    #     self.table_view.resizeColumnToContents(1)
+    #
+    # def debug(self):
+    #     QgsMessageLog.logMessage(f"Debug message", tag=__title__, level=Qgis.Info)
+    #
+    #     #QgsMessageLog.logMessage(f"My class is: {self.__class__.__name__}", tag=__title__, level=Qgis.Info)
+    #     QgsMessageLog.logMessage(f"My palette is: {type(self.palette()).__name__}", tag=__title__, level=Qgis.Info)
+    #
+    #     # existing_shortcuts = self.findChildren(QShortcut) + QgsGui.shortcutsManager().listShortcuts()

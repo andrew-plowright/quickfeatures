@@ -5,17 +5,17 @@ from quickfeatures.default_value_option_table_model import DefaultValueOptionTab
 
 # Misc
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 
 # qgis
-from qgis.core import QgsMapLayer, QgsMessageLog, Qgis, QgsDefaultValue, QgsVectorLayer
+from qgis.core import QgsDefaultValue, QgsVectorLayer, QgsMessageLog, Qgis
 from qgis.utils import iface
 
 # PyQt
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import Qt, QPoint, QSize
+from qgis.PyQt.QtCore import Qt, QPoint
 from qgis.PyQt.QtGui import QCursor
-from qgis.PyQt.QtWidgets import QDialog, QHeaderView, QDesktopWidget, QPushButton
+from qgis.PyQt.QtWidgets import QDialog, QHeaderView
 
 class DefaultValueEditor(QDialog):
 
@@ -37,8 +37,6 @@ class DefaultValueEditor(QDialog):
         self.cancel_button.clicked.connect(self.reject)
 
     def showEvent(self, event):
-        # QgsMessageLog.logMessage(f"SHOW", tag=__title__, level=Qgis.Info)
-
         self.resize(380, 250)
 
         # Show the dialog at the current mouse position
@@ -62,7 +60,6 @@ class DefaultValueEditor(QDialog):
         #self.table_model.set_selected_default_values(default_values)
 
     def init_table(self):
-
         # Create model
         self.table_model = DefaultValueOptionTableModel(self)
         self.table_model.rowsInserted.connect(self.rows_inserted)
@@ -81,6 +78,5 @@ class DefaultValueEditor(QDialog):
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
 
     def rows_inserted(self, parent, first, last):
-
         for row in range(first, last + 1):
             self.table_view.openPersistentEditor(self.table_model.index(row, 2))

@@ -1,5 +1,4 @@
 [
-	
 	{
 		"name": "Test City",
 		"map_lyr_name": "test_points",
@@ -32,7 +31,6 @@
 			"boolean": "true"
 		},
 		"shortcut_str": "F"
-	
 	}
 ]
 
