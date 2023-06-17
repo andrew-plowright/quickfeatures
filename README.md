@@ -9,6 +9,9 @@ keyboard shortcuts. An active feature template will auto-fill attribute values
 when a feature is created, thus saving clicks and keystrokes and speeding up
  digitization. 
 
+![Demo video](doc/demo_gif.gif)
+
+
 ## License
 
 Distributed under the terms of the [`GPLv3` license](LICENSE).
