@@ -14,7 +14,7 @@ from qgis.utils import iface
 # PyQt
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import Qt, QPoint
-from qgis.PyQt.QtGui import QCursor
+from qgis.PyQt.QtGui import QCursor, QPixmap
 from qgis.PyQt.QtWidgets import QDialog, QHeaderView
 
 class DefaultValueEditor(QDialog):
@@ -22,8 +22,15 @@ class DefaultValueEditor(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        root_path = Path(__file__).parent
+
         # Load UI file
-        uic.loadUi(Path(__file__).parent / "gui/{}.ui".format(Path(__file__).stem), self)
+        uic.loadUi(root_path / "gui/{}.ui".format(Path(__file__).stem), self)
+
+        # Set icon
+        metadata_icon = QPixmap(f"{root_path}/resources/icons/mActionPropertiesWidget.svg")
+        self.info_icon.setPixmap(metadata_icon)
+        self.info_icon.show()
 
         # Set modality
         self.setWindowModality(Qt.ApplicationModal)

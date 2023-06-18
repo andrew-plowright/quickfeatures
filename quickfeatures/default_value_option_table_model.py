@@ -9,7 +9,7 @@ from typing import Dict
 from qgis.core import QgsVectorLayer, QgsMessageLog, Qgis
 
 # PyQt
-from qgis.PyQt.QtCore import Qt, QModelIndex, QVariant, QAbstractTableModel
+from qgis.PyQt.QtCore import Qt, QModelIndex, QVariant, QAbstractTableModel, pyqtSlot
 from qgis.PyQt.QtWidgets import QStyledItemDelegate, QLineEdit
 from qgis.PyQt.QtGui import QColor
 
@@ -93,6 +93,8 @@ class DefaultValueOptionTableModel(QAbstractTableModel):
 
         col = index.column()
         column_header_label = self.header_labels[col]
+
+        # QgsMessageLog.logMessage(f"setData: header '{column_header_label}', row: '{row}', value: '{value}'", tag=__title__, level=Qgis.Info)
 
         if column_header_label == 'Select' and role == Qt.CheckStateRole:
             default_value_option.toggle_selected()
@@ -185,7 +187,8 @@ class DefaultValueOptionDelegate(QStyledItemDelegate):
 
     def createEditor(self, parent, option, index):
 
-        return QLineEdit(parent)
+        editor = QLineEdit(parent)
+        return editor
 
     def setModelData(self, editor, model, index):
 

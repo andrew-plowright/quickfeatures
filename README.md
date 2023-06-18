@@ -1,47 +1,55 @@
-# ⚡ Quick Features - QGIS Plugin
+⚡ Quick Features - QGIS Plugin
+======================================================================================================
+![license](https://img.shields.io/badge/Licence-GPL--3-blue.svg) 
 
-This QGIS plugin speeds up workflows that involve high volumes
-of manual feature creation.
+A QGIS plugin for speeding up manual feature creation and digitization. By linking feature templates to keyboard shorcuts,
+the user saves on clicks and keystrokes when repetitively switching between feature types.
 
-Quick Feature Create implements _feature templates_ which define attribute 
-values for a given vector layer. The user can activate feature templates using
-keyboard shortcuts. An active feature template will auto-fill attribute values
-when a feature is created, thus saving clicks and keystrokes and speeding up
- digitization. 
+This plugin was originally created to facilitate the labelling of training data from imagery, although it can
+be applied to other use cases as well.
 
 ![Demo video](doc/demo_gif.gif)
 
+# Installation
 
-## License
+Follow [this guide](doc/installation.md) for instructions on installing the plugin.
 
-Distributed under the terms of the [`GPLv3` license](LICENSE).
+# How to use this plugin
 
-## Installation
+## Feature templates
 
-### Method 1: Download latest release
+The plugin implements _feature templates_, which define attribute values for a given vector layer. The user can 
+switch between feature templates using keyboard shortcuts. An active feature template will suppress the 'Add Feature Form'
+and auto-fill attribute values when a feature is created.
 
-Download the [latest release](https://github.com/andrew-plowright/quickfeatures/releases/latest).
+## Create a feature template
 
-In QGIS 3, click _Plugins_ in the menu bar, then _Manage and Install Plugins_. In the
-left-hand panel, click _Install From Zip_ and
-select the downloaded zip file to install the plugin.
+To create a feature template, hit the ![Plus](quickfeatures/resources/icons/mActionAdd.svg) button. Give the new template a name, shortcut,
+and select a map layer.
 
-![Manage and Install Plugins](doc/qgis_install_plugin_window.png)
+_NOTE: Keyboard shortcuts must be typed out. For example, if you wanted a combination of keystrokes like
+'Ctrl+D' or 'Shift+D', you must type that out instead of just hitting the keys._
 
-### Method 2: Clone from Github
+![Create a feature template](docs/howto_create_template.png)
 
-Clone this repository to your local machine.
+## Set the feature template's attribute values
 
-In QGIS 3, click _Settings_ in the menu bar, then _Options_. In the left-hand panel, click _System_, then
-scroll down to the _Environment_ section.
+Once a map layer has been selected, hit the ![Values](quickfeatures/resources/icons/mActionEditTable.svg) button. Here, you can enter the
+attribute values for this template. Any new feature created using the template will have its attributes auto-filled
+according to these values.
 
-Add a new environment variable named `QGIS_PLUGINPATH`. Set it to
-_Append_ and set its value to the path to the cloned repository (the folder in which this README.md file is
-located).
+Begin by clicking the checkboxes for the fields for which values should be set. Unselect fields will be ignored.
 
-![Custom Environment Variables](doc/qgis_custom_environment_variable.png)
+Enter the desired values. IMPORTANT: these values are stored as [expressions](https://docs.qgis.org/3.28/en/docs/user_manual/expressions/expression.html),
+and should be formatted accordingly. For instance:
+- Integer and float values can be entered as-is: `6`, `2.123`
+- String values should be single-quoted: `'John Smith'`
+- Dates should be single-quoted and follow the YYYY-MM-DD format: `'2023-06-18'`
 
-Restart QGIS.
+![Set the feature template's attribute values](docs/howto_attribute_values.png)
 
-Then, click _Plugins_ in the menu bar, then _Manage and Install Plugins_. You should now find
-"Quick Features" in the list of available plugins.
+### Activate the feature template
+
+The template can be activated, either by click its checkbox or by hitting its keyboard shortcut.
+
+![Activate the feature template](docs/howto_activate_template.png)

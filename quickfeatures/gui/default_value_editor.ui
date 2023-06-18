@@ -26,21 +26,41 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>Select Default Values</string>
+   <string>Attribute Values</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QLabel" name="label">
-     <property name="text">
-      <string>Default values are stored as expressions. Don't forget to format them appropriately. For example, strings should be single-quoted.</string>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
-     <property name="margin">
-      <number>6</number>
-     </property>
-    </widget>
+    <layout class="QHBoxLayout" name="horizontal_layout1">
+     <item>
+      <widget class="QLabel" name="info_icon">
+       <property name="maximumSize">
+        <size>
+         <width>30</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="scaledContents">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="info_label">
+       <property name="text">
+        <string>Attribute values are stored as expressions and must be formatted accordingly. For example, strings should be single-quoted.</string>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+       <property name="margin">
+        <number>6</number>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <layout class="QVBoxLayout" name="vertical_layout" stretch="0,0">
@@ -55,7 +75,7 @@
       </widget>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontal_layout">
+      <layout class="QHBoxLayout" name="horizontal_layout2">
        <item>
         <widget class="QPushButton" name="accept_button">
          <property name="text">
@@ -82,6 +102,8 @@
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="default_value_editor.qrc"/>
+ </resources>
  <connections/>
 </ui>
