@@ -61,6 +61,6 @@ The template can be activated either by clicking its checkbox or by hitting its 
 
 ### Reuse feature templates
 
-Feature templates will automatically be saved to QGS Project files for reuse. You can also save and re-load feature 
+Feature templates will automatically be saved to QGS Project files for reuse. You can also save and reload feature 
 templates as JSON files by using the ![Save](quickfeatures/resources/icons/mActionFileSave.svg) and 
 ![Load](quickfeatures/resources/icons/mActionFileOpen.svg) buttons.
