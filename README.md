@@ -30,7 +30,7 @@ and select a map layer.
 _NOTE: Keyboard shortcuts must be typed out. For example, if you wanted a combination of keystrokes like
 'Ctrl+D' or 'Shift+D', you must type that out instead of just hitting the keys._
 
-![Create a feature template](docs/howto_create_template.png)
+![Create a feature template](doc/howto_create_template.png)
 
 ## Set the feature template's attribute values
 
@@ -40,16 +40,16 @@ according to these values.
 
 Begin by clicking the checkboxes for the fields for which values should be set. Unselect fields will be ignored.
 
-Enter the desired values. IMPORTANT: these values are stored as [expressions](https://docs.qgis.org/3.28/en/docs/user_manual/expressions/expression.html),
-and should be formatted accordingly. For instance:
+Enter the desired values. _IMPORTANT: these values are stored as [expressions](https://docs.qgis.org/3.28/en/docs/user_manual/expressions/expression.html),
+and should be formatted accordingly._ For instance:
 - Integer and float values can be entered as-is: `6`, `2.123`
 - String values should be single-quoted: `'John Smith'`
 - Dates should be single-quoted and follow the YYYY-MM-DD format: `'2023-06-18'`
 
-![Set the feature template's attribute values](docs/howto_attribute_values.png)
+![Set the feature template's attribute values](doc/howto_attribute_values.png)
 
 ### Activate the feature template
 
 The template can be activated, either by click its checkbox or by hitting its keyboard shortcut.
 
-![Activate the feature template](docs/howto_activate_template.png)
+![Activate the feature template](doc/howto_activate_template.png)
