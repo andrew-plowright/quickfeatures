@@ -10,7 +10,7 @@ import json
 
 # qgis
 from qgis.gui import QgsMapLayerComboBox
-from qgis.core import QgsProject, QgsMapLayerProxyModel, QgsMessageLog, Qgis
+from qgis.core import QgsProject, QgsMapLayerProxyModel, QgsMessageLog, Qgis, QgsVectorLayer
 
 # PyQt
 from qgis.PyQt.QtCore import QModelIndex, Qt, QAbstractTableModel, QVariant, QSize, pyqtSlot
