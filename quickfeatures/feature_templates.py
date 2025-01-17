@@ -262,7 +262,7 @@ class FeatureTemplate(QObject):
     def set_lyr_form_suppress(self, suppress: int) -> None:
 
         edit_form = self.map_lyr.editFormConfig()
-        edit_form.setSuppress(suppress)
+        edit_form.setSuppress(Qgis.AttributeFormSuppression(suppress))
         self.map_lyr.setEditFormConfig(edit_form)
 
     def get_lyr_form_suppress(self) -> int:
