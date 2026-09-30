@@ -1,0 +1,28 @@
+[general]
+name=Quick Features
+about=Use feature templates and keyboard shortcuts to accelerate the manual creation of features
+category=None
+hasProcessingProvider=no
+description=Use feature templates and keyboard shortcuts to accelerate the manual creation of features
+icon=resources/images/high_voltage.png
+tags=features,digitization
+
+# credits and contact
+author=Andrew PLOWRIGHT
+email=andrew.plowright@nrcan-rncan.gc.ca
+homepage=https://github.com/andrew-plowright/quickfeatures
+repository=https://github.com/andrew-plowright/quickfeatures
+tracker=https://github.com/andrew-plowright/quickfeatures/issues
+
+# experimental flag
+deprecated=False
+experimental=True
+qgisMinimumVersion=3.22
+qgisMaximumVersion=4.99
+
+# versionnement
+version=0.3.2
+changelog=0.3.2 Fix position and group remember of plugin after plugin reinstall (self solution),
+      Fix resetting combox after quickfeature select in head of Attribute Table (workaround using mFieldCombo)
+0.3.1 Fix position and group remmember of plugin panel after QGIS quit
+0.3.0 Refactoring for compatibility with QGIS 4.2/Qt 6
