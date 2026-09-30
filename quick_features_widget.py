@@ -127,20 +127,35 @@ class QuickFeaturesWidget(QWidget):
 
         self.table_model.clear_templates()
 
+    LAST_DIR_SETTINGS_KEY = "quickfeatures/last_templates_dir"
+
+    def _get_last_templates_dir(self) -> str:
+        # Falls back to the user's home directory if nothing saved yet -
+        # avoids a hardcoded, Windows-only 'c:\\' default.
+        return QgsSettings().value(self.LAST_DIR_SETTINGS_KEY, str(Path.home()))
+
+    def _set_last_templates_dir(self, file_name: str) -> None:
+        directory = str(Path(file_name).parent)
+        QgsSettings().setValue(self.LAST_DIR_SETTINGS_KEY, directory)
+
     def load_templates_dialog(self):
 
-        file_name = QFileDialog.getOpenFileName(self, 'Open file', 'c:\\', "JSON file (*.json)")[0]
+        file_name = QFileDialog.getOpenFileName(self, 'Open file', self._get_last_templates_dir(),
+                                                 "JSON file (*.json)")[0]
 
         if file_name != '':
+            self._set_last_templates_dir(file_name)
             self.table_model.from_json(Path(file_name))
 
         self.table_view.resizeColumnToContents(1)
 
     def save_templates_dialog(self):
 
-        file_name = QFileDialog.getSaveFileName(self, 'Save file', 'c:\\', "JSON file (*.json)")[0]
+        file_name = QFileDialog.getSaveFileName(self, 'Save file', self._get_last_templates_dir(),
+                                                 "JSON file (*.json)")[0]
 
         if file_name != '':
+            self._set_last_templates_dir(file_name)
             self.table_model.to_json(Path(file_name))
 
     def project_load(self, doc: QDomDocument):
