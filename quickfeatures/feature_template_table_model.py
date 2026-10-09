@@ -35,6 +35,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
         super().__init__(parent)
 
         self.templates = []
+        self.highlight_brush = parent.palette().highlight()
 
     def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
@@ -77,6 +78,10 @@ class FeatureTemplateTableModel(QAbstractTableModel):
                     return Qt.CheckState.Checked
                 else:
                     return Qt.CheckState.Unchecked
+
+        if role == Qt.ItemDataRole.BackgroundRole:
+            if template.is_active():
+                return self.highlight_brush
 
         if role == Qt.ItemDataRole.ForegroundRole:
             if not template.is_valid():
