@@ -227,7 +227,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
         except (OSError, json.JSONDecodeError) as e:
             iface.messageBar().pushMessage(
                 "Quick Features",
-                f"Soubor '{path.name}' se nepodařilo přečíst jako JSON: {e}",
+                f"Failed to read file '{path.name}' as JSON: {e}",
                 level=Qgis.Critical
             )
             return
@@ -235,8 +235,8 @@ class FeatureTemplateTableModel(QAbstractTableModel):
         if not isinstance(data, list) or not all(isinstance(item, dict) for item in data):
             iface.messageBar().pushMessage(
                 "Quick Features",
-                f"Soubor '{path.name}' nemá formát šablon Quick Features "
-                "(očekává se seznam objektů uložený tlačítkem 'Save templates').",
+                f"File '{path.name}' is not in the Quick Features templates format "
+                "(expected a list of objects saved with the 'Save templates' button).",
                 level=Qgis.Warning
             )
             return
@@ -248,7 +248,7 @@ class FeatureTemplateTableModel(QAbstractTableModel):
             if missing_keys:
                 iface.messageBar().pushMessage(
                     "Quick Features",
-                    f"Soubor '{path.name}': položka č. {i + 1} postrádá klíče {sorted(missing_keys)}, přeskočena.",
+                    f"File '{path.name}': item no. {i + 1} is missing keys {sorted(missing_keys)}, skipped.",
                     level=Qgis.Warning
                 )
                 continue
